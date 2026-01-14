@@ -37,7 +37,8 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     super.dispose();
   }
 
-  Future<void> _download(Track track) async {
+  // Manual download override (still useful if user wants to prep offline without playing)
+  Future<void> _manualDownload(Track track) async {
     if (Platform.isAndroid) {
       if (await Permission.storage.request().isGranted == false) {}
     }
@@ -50,26 +51,19 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
       final safeName = track.displayName.replaceAll(RegExp(r'[^\w\s\.-]'), '').trim();
       final savePath = '${dir.path}/$safeName.mp3';
 
-      String downloadUrl = track.link;
-      if (track.link.contains('pillows.su/f/')) {
-         final cleanUri = Uri.parse(track.link).replace(query: '').toString();
-         final id = cleanUri.split('/f/').last.replaceAll('/', '');
-         downloadUrl = 'https://api.pillows.su/api/download/$id.mp3';
-      }
-
       await Dio().download(
-        downloadUrl,
+        track.effectiveUrl,
         savePath,
         options: Options(receiveTimeout: const Duration(minutes: 5)),
       );
 
-      final newTrack = track.copyWith(localPath: savePath);
-      final boxName = 'tracks_${ref.read(selectedTabProvider)!.gid}';
-
-      if (Hive.isBoxOpen(boxName)) {
-        await Hive.box<Track>(boxName).put(track.key, newTrack);
-        ref.invalidate(tracksProvider);
+      // Update Hive
+      track.localPath = savePath;
+      if (track.isInBox) {
+        await track.save();
       }
+
+      if (mounted) setState(() {}); // Refresh UI to show checkmark
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Download Failed")));
@@ -88,8 +82,9 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     final mediaItemAsync = ref.watch(currentMediaItemProvider);
     final playbackStateAsync = ref.watch(playbackStateProvider);
 
+    // Determine if this tile is the currently playing track
     final currentMediaId = mediaItemAsync.value?.id;
-    final isCurrentTrack = currentMediaId == t.link || (t.localPath.isNotEmpty && currentMediaId == t.localPath);
+    final isCurrentTrack = currentMediaId == t.effectiveUrl || (t.localPath.isNotEmpty && currentMediaId == t.localPath);
 
     final playbackState = playbackStateAsync.value;
     final isPlaying = isCurrentTrack && (playbackState?.playing ?? false);
@@ -227,7 +222,7 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     if (isDownloaded) {
       return const Icon(Icons.check_circle_rounded, color: Color(0xFF4CAF50), size: 24);
     }
-    if (hasLink && widget.track.link.contains('pillows.su')) {
+    if (hasLink) {
       return Container(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
@@ -235,7 +230,7 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
         ),
         child: IconButton(
           icon: const Icon(Icons.download_rounded, color: Colors.white38, size: 20),
-          onPressed: () => _download(widget.track),
+          onPressed: () => _manualDownload(widget.track),
         ),
       );
     }

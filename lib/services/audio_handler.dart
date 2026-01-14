@@ -1,11 +1,15 @@
 import 'dart:io';
 import 'package:audio_service/audio_service.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:hive/hive.dart'; // Import Hive to check settings directly
 import 'package:just_audio/just_audio.dart';
+import 'package:path_provider/path_provider.dart';
 import '../models/track.dart';
 
 class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final _player = AudioPlayer();
+  final _dio = Dio();
 
   MyAudioHandler() {
     _player.playbackEventStream.listen(_broadcastState);
@@ -55,21 +59,20 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   Future<void> seek(Duration position) => _player.seek(position);
 
   Future<void> playTrack(Track track) async {
-    String uri = track.link;
-    bool isLocal =
-        track.localPath.isNotEmpty && File(track.localPath).existsSync();
+    String uri = track.effectiveUrl;
+    bool isLocal = track.localPath.isNotEmpty && File(track.localPath).existsSync();
 
     if (isLocal) {
+      debugPrint("Playing from local cache: ${track.localPath}");
       uri = track.localPath;
     } else {
-      if (uri.contains('pillows.su/f/')) {
-        try {
-          final cleanUri = Uri.parse(uri).replace(query: '').toString();
-          final id = cleanUri.split('/f/').last.replaceAll('/', '');
-          uri = 'https://api.pillows.su/api/download/$id.mp3';
-        } catch (e) {
-          debugPrint("Error parsing pillow link: $e");
-        }
+      debugPrint("Streaming: $uri");
+
+      // Check Settings for Auto-Download
+      final autoDownload = Hive.box('settings').get('auto_download', defaultValue: true);
+
+      if (autoDownload) {
+        _cacheTrack(track);
       }
     }
 
@@ -77,7 +80,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       id: uri,
       title: track.title,
       artist: track.artist.isEmpty ? track.era : track.artist,
-      duration: null, // Just Audio will determine this
+      duration: null,
     );
 
     mediaItem.add(item);
@@ -86,8 +89,6 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       if (isLocal) {
         await _player.setFilePath(uri);
       } else {
-        // Use LockCachingAudioSource in future for better caching,
-        // currently standard setUrl is safest for basic streaming.
         await _player.setUrl(uri);
       }
       play();
@@ -96,7 +97,35 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     }
   }
 
-  // Clean up resources when app terminates (if applicable)
+  Future<void> _cacheTrack(Track track) async {
+    if (track.localPath.isNotEmpty && File(track.localPath).existsSync()) return;
+
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final safeName = track.displayName.replaceAll(RegExp(r'[^\w\s\.-]'), '').trim();
+      final savePath = '${dir.path}/$safeName.mp3';
+
+      debugPrint("Starting background cache for: ${track.title}");
+
+      await _dio.download(
+        track.effectiveUrl,
+        savePath,
+        options: Options(receiveTimeout: const Duration(minutes: 10)),
+      );
+
+      if (File(savePath).existsSync()) {
+        debugPrint("Cache complete: $savePath");
+        track.localPath = savePath;
+        if (track.isInBox) {
+          await track.save();
+        }
+      }
+    } catch (e) {
+      debugPrint("Background cache failed for ${track.title}: $e");
+    }
+  }
+
+  @override
   Future<void> dispose() async {
     await _player.dispose();
   }

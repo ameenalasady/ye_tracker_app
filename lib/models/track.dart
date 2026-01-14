@@ -21,7 +21,7 @@ class Track extends HiveObject {
   @HiveField(8)
   final String link;
   @HiveField(9)
-  final String localPath;
+  String localPath; // Changed from final to String for mutability
 
   // Cached lowercased string for O(1) access during search filtering
   String? _searchIndex;
@@ -59,6 +59,21 @@ class Track extends HiveObject {
   String get searchIndex {
     _searchIndex ??= "$title $artist $era $notes".toLowerCase();
     return _searchIndex!;
+  }
+
+  /// Centralized logic to get the actual download/stream URL
+  /// Handles special cases like pillows.su
+  String get effectiveUrl {
+    if (link.contains('pillows.su/f/')) {
+      try {
+        final cleanUri = Uri.parse(link).replace(query: '').toString();
+        final id = cleanUri.split('/f/').last.replaceAll('/', '');
+        return 'https://api.pillows.su/api/download/$id.mp3';
+      } catch (e) {
+        return link;
+      }
+    }
+    return link;
   }
 }
 

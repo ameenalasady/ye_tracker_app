@@ -41,6 +41,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     } else {
       ref.invalidate(tabsProvider);
     }
+    // Refresh cache size calculation
+    ref.refresh(cacheSizeProvider);
 
     if (mounted) setState(() => _isRefreshing = false);
   }
@@ -85,7 +87,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                             ),
                             IconButton(
                               icon: const Icon(Icons.settings_rounded, color: Colors.white54),
-                              onPressed: () => _showSourceDialog(context),
+                              onPressed: () => _showSettingsSheet(context),
                             ),
                           ],
                         )
@@ -202,37 +204,153 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     );
   }
 
-  void _showSourceDialog(BuildContext context) {
-    final controller = TextEditingController(text: ref.read(sourceUrlProvider));
-    showDialog(
+  // --- SETTINGS SHEET ---
+  void _showSettingsSheet(BuildContext context) {
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF252525),
-        title: const Text("Set Source", style: TextStyle(color: Colors.white)),
-        content: TextField(
-          controller: controller,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            labelText: "Domain",
-            hintText: "yetracker.net",
-            labelStyle: TextStyle(color: Colors.grey),
-            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
-            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFFF5252))),
+      backgroundColor: const Color(0xFF1E1E1E),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (ctx) => const SettingsSheet(),
+    );
+  }
+}
+
+class SettingsSheet extends ConsumerStatefulWidget {
+  const SettingsSheet({super.key});
+
+  @override
+  ConsumerState<SettingsSheet> createState() => _SettingsSheetState();
+}
+
+class _SettingsSheetState extends ConsumerState<SettingsSheet> {
+  late TextEditingController _sourceController;
+
+  @override
+  void initState() {
+    super.initState();
+    _sourceController = TextEditingController(text: ref.read(sourceUrlProvider));
+  }
+
+  @override
+  void dispose() {
+    _sourceController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final autoDownload = ref.watch(autoDownloadProvider);
+    final cacheSizeAsync = ref.watch(cacheSizeProvider);
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+          const SizedBox(height: 24),
+          const Text("Settings", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+          const SizedBox(height: 24),
+
+          // --- SECTION: OFFLINE ---
+          const Text("Offline & Storage", style: TextStyle(color: Color(0xFFFF5252), fontWeight: FontWeight.bold, fontSize: 13)),
+          const SizedBox(height: 10),
+
+          Container(
+            decoration: BoxDecoration(color: const Color(0xFF2A2A2A), borderRadius: BorderRadius.circular(16)),
+            child: Column(
+              children: [
+                SwitchListTile(
+                  value: autoDownload,
+                  activeColor: const Color(0xFFFF5252),
+                  title: const Text("Auto-Download on Play", style: TextStyle(color: Colors.white)),
+                  subtitle: const Text("Automatically save songs when you play them", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  onChanged: (val) {
+                    ref.read(autoDownloadProvider.notifier).state = val;
+                    Hive.box('settings').put('auto_download', val);
+                  },
+                ),
+                Divider(height: 1, color: Colors.white.withOpacity(0.05)),
+                ListTile(
+                  title: const Text("Clear Cache", style: TextStyle(color: Colors.white)),
+                  subtitle: Text(
+                    "Frees up space (Currently used: ${cacheSizeAsync.value ?? 'Calculating...'})",
+                    style: const TextStyle(color: Colors.grey, fontSize: 12)
+                  ),
+                  trailing: const Icon(Icons.delete_outline, color: Colors.white54),
+                  onTap: () async {
+                    // Confirm Dialog
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (c) => AlertDialog(
+                        backgroundColor: const Color(0xFF252525),
+                        title: const Text("Clear Cache?", style: TextStyle(color: Colors.white)),
+                        content: const Text("This will delete all downloaded songs.", style: TextStyle(color: Colors.white70)),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text("Cancel")),
+                          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text("Delete", style: TextStyle(color: Color(0xFFFF5252)))),
+                        ],
+                      ),
+                    );
+
+                    if (confirm == true) {
+                      await CacheManager.clearAllCache();
+                      ref.refresh(cacheSizeProvider); // Recalculate size
+                      ref.invalidate(tracksProvider); // Refresh track lists to remove checkmarks
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Cache cleared")));
+                      }
+                    }
+                  },
+                ),
+              ],
+            ),
           ),
-          TextButton(
-            onPressed: () {
-              ref.read(sourceUrlProvider.notifier).state = controller.text;
-              ref.invalidate(tabsProvider);
-              Navigator.pop(ctx);
-            },
-            child: const Text("Save", style: TextStyle(color: Color(0xFFFF5252))),
+
+          const SizedBox(height: 24),
+
+          // --- SECTION: SOURCE ---
+          const Text("Data Source", style: TextStyle(color: Color(0xFFFF5252), fontWeight: FontWeight.bold, fontSize: 13)),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(color: const Color(0xFF2A2A2A), borderRadius: BorderRadius.circular(16)),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _sourceController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      labelText: "Tracker Domain",
+                      labelStyle: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    ref.read(sourceUrlProvider.notifier).state = _sourceController.text;
+                    ref.invalidate(tabsProvider);
+                    Navigator.pop(context);
+                  },
+                  child: const Text("Save", style: TextStyle(color: Color(0xFFFF5252))),
+                )
+              ],
+            ),
           ),
+
+          const SizedBox(height: 12),
+          const Center(child: Text("v1.0.0 • Ye Tracker", style: TextStyle(color: Colors.white24, fontSize: 12))),
         ],
       ),
     );
