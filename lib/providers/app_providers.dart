@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async'; // Added for Stream
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
@@ -14,19 +15,16 @@ final searchQueryProvider = StateProvider<String>((ref) => "");
 // --- SETTINGS PROVIDERS ---
 
 final autoDownloadProvider = StateProvider<bool>((ref) {
-  // Initialize from Hive, default to true
   final box = Hive.box('settings');
   return box.get('auto_download', defaultValue: true);
 });
 
 // Calculate Cache Size
 final cacheSizeProvider = FutureProvider<String>((ref) async {
-  // Trigger recalculation when tabs change or manual refresh
   ref.watch(tabsProvider);
 
   final dir = await getApplicationDocumentsDirectory();
   try {
-    // Only count MP3s to avoid counting system/hive files
     final files = dir.listSync().where((f) => f.path.endsWith('.mp3'));
     int totalBytes = 0;
     for (var f in files) {
@@ -54,6 +52,30 @@ final playbackStateProvider = StreamProvider<PlaybackState>((ref) {
 
 final currentMediaItemProvider = StreamProvider<MediaItem?>((ref) {
   return ref.watch(audioHandlerProvider).mediaItem;
+});
+
+// FIXED: Manually bridge ValueNotifier to Stream
+final activeDownloadsProvider = StreamProvider<Set<String>>((ref) {
+  final handler = ref.watch(audioHandlerProvider);
+
+  return Stream.multi((controller) {
+    void listener() {
+      if (!controller.isClosed) {
+        controller.add(handler.downloadingTracks.value);
+      }
+    }
+
+    // Add initial value
+    controller.add(handler.downloadingTracks.value);
+
+    // Listen to changes
+    handler.downloadingTracks.addListener(listener);
+
+    // Cleanup when stream is cancelled
+    controller.onCancel = () {
+      handler.downloadingTracks.removeListener(listener);
+    };
+  });
 });
 
 // --- DATA FETCHING ---
@@ -120,7 +142,6 @@ class CacheManager {
     final dir = await getApplicationDocumentsDirectory();
     final files = dir.listSync();
 
-    // 1. Delete physical files
     for (var entity in files) {
       if (entity is File && entity.path.endsWith('.mp3')) {
         try {
@@ -129,25 +150,6 @@ class CacheManager {
       }
     }
 
-    // 2. Reset 'localPath' in all Track boxes
-    // We iterate over open boxes. If a box isn't open, the UI will
-    // simply not show it as downloaded until the file check fails anyway.
-    // However, to be thorough, we check all known track boxes.
-    // (Simplification: We iterate currently open boxes for immediate UI update)
-
-    // Note: Hive doesn't give a list of all box names on disk easily without
-    // platform specific directory scanning. We will rely on the fact that
-    // if the file is gone, the TrackTile logic (File.exists) returns false.
-    // But we should clean the objects to prevent stale paths.
-
-    // Iterate all tabs if possible, or just open boxes
-    // This is a "best effort" cleanup for open boxes
-    for (var _ in Hive.box('settings').keys) {
-      // If we stored tab lists, we could iterate them.
-    }
-
-    // Hack: We rely on the TrackTile build method checking File(path).exists()
-    // which effectively resets the UI state visually.
-    // To properly clear the Hive data, we would need to know every GID ever visited.
+    // Clear known boxes logic here if needed
   }
 }

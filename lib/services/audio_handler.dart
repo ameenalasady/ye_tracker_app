@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:hive/hive.dart'; // Import Hive to check settings directly
+import 'package:hive/hive.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/track.dart';
@@ -10,6 +10,9 @@ import '../models/track.dart';
 class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final _player = AudioPlayer();
   final _dio = Dio();
+
+  // Expose currently downloading URLs to the UI
+  final ValueNotifier<Set<String>> downloadingTracks = ValueNotifier({});
 
   MyAudioHandler() {
     _player.playbackEventStream.listen(_broadcastState);
@@ -68,10 +71,10 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     } else {
       debugPrint("Streaming: $uri");
 
-      // Check Settings for Auto-Download
       final autoDownload = Hive.box('settings').get('auto_download', defaultValue: true);
 
       if (autoDownload) {
+        // Fire and forget download
         _cacheTrack(track);
       }
     }
@@ -99,8 +102,12 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   Future<void> _cacheTrack(Track track) async {
     if (track.localPath.isNotEmpty && File(track.localPath).existsSync()) return;
+    if (downloadingTracks.value.contains(track.effectiveUrl)) return;
 
     try {
+      // 1. Notify Start
+      downloadingTracks.value = {...downloadingTracks.value, track.effectiveUrl};
+
       final dir = await getApplicationDocumentsDirectory();
       final safeName = track.displayName.replaceAll(RegExp(r'[^\w\s\.-]'), '').trim();
       final savePath = '${dir.path}/$safeName.mp3';
@@ -115,6 +122,8 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
       if (File(savePath).existsSync()) {
         debugPrint("Cache complete: $savePath");
+
+        // 2. Save to Hive (Triggers UI update via ValueListenableBuilder)
         track.localPath = savePath;
         if (track.isInBox) {
           await track.save();
@@ -122,10 +131,16 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       }
     } catch (e) {
       debugPrint("Background cache failed for ${track.title}: $e");
+    } finally {
+      // 3. Notify End
+      final set = Set<String>.from(downloadingTracks.value);
+      set.remove(track.effectiveUrl);
+      downloadingTracks.value = set;
     }
   }
 
   Future<void> dispose() async {
     await _player.dispose();
+    downloadingTracks.dispose();
   }
 }

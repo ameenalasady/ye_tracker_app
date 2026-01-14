@@ -23,12 +23,12 @@ class MiniPlayer extends ConsumerWidget {
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
       height: 70,
       decoration: BoxDecoration(
-        color: const Color(0xFF2A2A2A).withOpacity(0.95),
+        color: const Color(0xFF2A2A2A).withAlpha((0.95 * 255).toInt()),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: Colors.white.withAlpha((0.1 * 255).toInt())),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.5),
+            color: Colors.black.withAlpha((0.5 * 255).toInt()),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),

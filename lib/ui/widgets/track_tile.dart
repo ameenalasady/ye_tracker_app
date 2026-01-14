@@ -4,6 +4,8 @@ import 'package:audio_service/audio_service.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive/hive.dart'; // Import Hive Base
+import 'package:hive_flutter/hive_flutter.dart'; // Import Hive Flutter for .listenable()
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../models/track.dart';
@@ -18,13 +20,12 @@ class TrackTile extends ConsumerStatefulWidget {
 }
 
 class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProviderStateMixin {
-  bool _downloading = false;
+  bool _manualDownloading = false;
   late AnimationController _animController;
 
   @override
   void initState() {
     super.initState();
-    // Reverted to original duration and reverse behavior
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600)
@@ -37,18 +38,16 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     super.dispose();
   }
 
-  // Manual download override (still useful if user wants to prep offline without playing)
   Future<void> _manualDownload(Track track) async {
     if (Platform.isAndroid) {
       if (await Permission.storage.request().isGranted == false) {}
     }
 
     if (!mounted) return;
-    setState(() => _downloading = true);
+    setState(() => _manualDownloading = true);
 
     try {
       final dir = await getApplicationDocumentsDirectory();
-      // We still use displayName for the file name so it reads "Artist - Song.mp3" in the file system
       final safeName = track.displayName.replaceAll(RegExp(r'[^\w\s\.-]'), '').trim();
       final savePath = '${dir.path}/$safeName.mp3';
 
@@ -58,24 +57,35 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
         options: Options(receiveTimeout: const Duration(minutes: 5)),
       );
 
-      // Update Hive
       track.localPath = savePath;
       if (track.isInBox) {
         await track.save();
       }
-
-      if (mounted) setState(() {}); // Refresh UI to show checkmark
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Download Failed")));
       }
     } finally {
-      if (mounted) setState(() => _downloading = false);
+      if (mounted) setState(() => _manualDownloading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // FIXED: Cast box to Box to access .listenable()
+    if (widget.track.isInBox) {
+      return ValueListenableBuilder(
+        valueListenable: (widget.track.box as Box).listenable(keys: [widget.track.key]),
+        builder: (context, box, _) {
+          return _buildTileContent(context);
+        },
+      );
+    } else {
+      return _buildTileContent(context);
+    }
+  }
+
+  Widget _buildTileContent(BuildContext context) {
     final t = widget.track;
     final hasLink = t.link.isNotEmpty && t.link != "Link Needed";
     final isDownloaded = t.localPath.isNotEmpty && File(t.localPath).existsSync();
@@ -83,7 +93,12 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     final mediaItemAsync = ref.watch(currentMediaItemProvider);
     final playbackStateAsync = ref.watch(playbackStateProvider);
 
-    // Determine if this tile is the currently playing track
+    // Check active auto-downloads
+    final activeDownloads = ref.watch(activeDownloadsProvider).value ?? {};
+    final isAutoDownloading = activeDownloads.contains(t.effectiveUrl);
+
+    final isProcessingDownload = _manualDownloading || isAutoDownloading;
+
     final currentMediaId = mediaItemAsync.value?.id;
     final isCurrentTrack = currentMediaId == t.effectiveUrl || (t.localPath.isNotEmpty && currentMediaId == t.localPath);
 
@@ -91,7 +106,6 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     final isPlaying = isCurrentTrack && (playbackState?.playing ?? false);
     final isBuffering = isCurrentTrack && (playbackState?.processingState == AudioProcessingState.buffering || playbackState?.processingState == AudioProcessingState.loading);
 
-    // --- UI CONFIGURATION ---
     final Color cardColor = const Color(0xFF252525);
     final Color activeBorderColor = const Color(0xFFFF5252);
 
@@ -118,20 +132,19 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
           color: cardColor,
           borderRadius: BorderRadius.circular(16),
           border: isCurrentTrack
-            ? Border.all(color: activeBorderColor.withOpacity(0.8), width: 1.5)
+            ? Border.all(color: activeBorderColor.withAlpha((0.8 * 255).toInt()), width: 1.5)
             : Border.all(color: Colors.transparent, width: 1.5),
           boxShadow: isCurrentTrack
-            ? [BoxShadow(color: activeBorderColor.withOpacity(0.25), blurRadius: 12, spreadRadius: 0)]
+            ? [BoxShadow(color: activeBorderColor.withAlpha((0.25 * 255).toInt()), blurRadius: 12, spreadRadius: 0)]
             : [const BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))],
         ),
         child: Row(
           children: [
-            // Leading Icon Box
             Container(
               width: 50,
               height: 50,
               decoration: BoxDecoration(
-                color: isCurrentTrack ? activeBorderColor.withOpacity(0.15) : Colors.white.withOpacity(0.05),
+                color: isCurrentTrack ? activeBorderColor.withAlpha((0.15 * 255).toInt()) : Colors.white.withAlpha((0.05 * 255).toInt()),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
@@ -139,8 +152,6 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
               ),
             ),
             const SizedBox(width: 16),
-
-            // Text Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -156,8 +167,6 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
                     ),
                   ),
                   const SizedBox(height: 4),
-
-                  // Subtitle
                   Text(
                     [
                       t.artist,
@@ -171,9 +180,7 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
                 ],
               ),
             ),
-
-            // Action Icons
-            _buildTrailingAction(hasLink, isDownloaded),
+            _buildTrailingAction(hasLink, isDownloaded, isProcessingDownload),
           ],
         ),
       ),
@@ -188,8 +195,6 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
       return AnimatedBuilder(
         animation: _animController,
         builder: (context, child) {
-          // FIX: Wrap in a SizedBox with a fixed height (24 is enough for max height).
-          // CrossAxisAlignment.end ensures bars grow from the bottom up.
           return SizedBox(
             height: 24,
             child: Row(
@@ -213,10 +218,7 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
   }
 
   Widget _bar(double scaleMultiplier) {
-    // Reverted to original logic: Controller Value + Random Jitter
-    // Max height approx: 8 + 10 + 4 = 22.0
     final height = 8.0 + (10.0 * _animController.value * scaleMultiplier) + (Random().nextDouble() * 4);
-
     return Container(
       width: 4,
       height: height,
@@ -227,9 +229,13 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     );
   }
 
-  Widget _buildTrailingAction(bool hasLink, bool isDownloaded) {
-    if (_downloading) {
-      return const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24));
+  Widget _buildTrailingAction(bool hasLink, bool isDownloaded, bool isDownloading) {
+    if (isDownloading) {
+      return const SizedBox(
+        width: 20,
+        height: 20,
+        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24)
+      );
     }
     if (isDownloaded) {
       return const Icon(Icons.check_circle_rounded, color: Color(0xFF4CAF50), size: 24);
@@ -238,7 +244,7 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
       return Container(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.white.withOpacity(0.05),
+          color: Colors.white.withAlpha((0.05 * 255).toInt()),
         ),
         child: IconButton(
           icon: const Icon(Icons.download_rounded, color: Colors.white38, size: 20),

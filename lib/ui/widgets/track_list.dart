@@ -17,11 +17,11 @@ class TrackList extends ConsumerWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.graphic_eq, size: 64, color: Colors.white.withOpacity(0.1)),
+                Icon(Icons.graphic_eq, size: 64, color: Colors.white.withAlpha((0.1 * 255).toInt())),
                 const SizedBox(height: 16),
                 Text(
                   "No tracks found",
-                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16)
+                  style: TextStyle(color: Colors.white.withAlpha((0.5 * 255).toInt()), fontSize: 16)
                 ),
               ],
             ),
