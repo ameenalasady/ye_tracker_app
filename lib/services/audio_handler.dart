@@ -16,6 +16,16 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   MyAudioHandler() {
     _player.playbackEventStream.listen(_broadcastState);
+
+    // --- NEW: Listen for duration changes ---
+    // This is crucial for the slider to know the max length
+    _player.durationStream.listen((duration) {
+      final currentItem = mediaItem.value;
+      if (currentItem != null && duration != null) {
+        mediaItem.add(currentItem.copyWith(duration: duration));
+      }
+    });
+
     _player.processingStateStream.listen((state) {
       if (state == ProcessingState.completed) stop();
     });
@@ -31,7 +41,11 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
           MediaControl.stop,
           MediaControl.skipToNext,
         ],
-        systemActions: const {MediaAction.seek},
+        systemActions: const {
+          MediaAction.seek,
+          MediaAction.seekForward,
+          MediaAction.seekBackward,
+        },
         androidCompactActionIndices: const [0, 1, 3],
         processingState: const {
           ProcessingState.idle: AudioProcessingState.idle,
@@ -79,10 +93,12 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       }
     }
 
+    // Initial MediaItem (Duration is null here, will be updated by durationStream listener)
     final item = MediaItem(
       id: uri,
       title: track.title,
       artist: track.artist.isEmpty ? track.era : track.artist,
+      artUri: null, // You can add album art logic here later
       duration: null,
     );
 
@@ -105,7 +121,6 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     if (downloadingTracks.value.contains(track.effectiveUrl)) return;
 
     try {
-      // 1. Notify Start
       downloadingTracks.value = {...downloadingTracks.value, track.effectiveUrl};
 
       final dir = await getApplicationDocumentsDirectory();
@@ -122,8 +137,6 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
       if (File(savePath).existsSync()) {
         debugPrint("Cache complete: $savePath");
-
-        // 2. Save to Hive (Triggers UI update via ValueListenableBuilder)
         track.localPath = savePath;
         if (track.isInBox) {
           await track.save();
@@ -132,7 +145,6 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     } catch (e) {
       debugPrint("Background cache failed for ${track.title}: $e");
     } finally {
-      // 3. Notify End
       final set = Set<String>.from(downloadingTracks.value);
       set.remove(track.effectiveUrl);
       downloadingTracks.value = set;

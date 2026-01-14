@@ -5,6 +5,7 @@ import '../../models/track.dart';
 import '../../providers/app_providers.dart';
 import '../widgets/mini_player.dart';
 import '../widgets/track_list.dart';
+import 'player_screen.dart'; // Import added
 
 class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
