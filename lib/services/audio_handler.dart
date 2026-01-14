@@ -17,8 +17,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   MyAudioHandler() {
     _player.playbackEventStream.listen(_broadcastState);
 
-    // --- NEW: Listen for duration changes ---
-    // This is crucial for the slider to know the max length
+    // Listen for duration changes
     _player.durationStream.listen((duration) {
       final currentItem = mediaItem.value;
       if (currentItem != null && duration != null) {
@@ -88,17 +87,16 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       final autoDownload = Hive.box('settings').get('auto_download', defaultValue: true);
 
       if (autoDownload) {
-        // Fire and forget download
         _cacheTrack(track);
       }
     }
 
-    // Initial MediaItem (Duration is null here, will be updated by durationStream listener)
+    // Initial MediaItem with Artwork
     final item = MediaItem(
       id: uri,
       title: track.title,
       artist: track.artist.isEmpty ? track.era : track.artist,
-      artUri: null, // You can add album art logic here later
+      artUri: track.albumArtUrl.isNotEmpty ? Uri.parse(track.albumArtUrl) : null,
       duration: null,
     );
 

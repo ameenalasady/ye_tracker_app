@@ -21,7 +21,9 @@ class Track extends HiveObject {
   @HiveField(8)
   final String link;
   @HiveField(9)
-  String localPath; // Changed from final to String for mutability
+  String localPath;
+  @HiveField(10)
+  final String albumArtUrl; // Added field
 
   // Cached lowercased string for O(1) access during search filtering
   String? _searchIndex;
@@ -37,6 +39,7 @@ class Track extends HiveObject {
     required this.isStreaming,
     required this.link,
     this.localPath = '',
+    this.albumArtUrl = '',
   });
 
   Track copyWith({String? localPath}) {
@@ -51,6 +54,7 @@ class Track extends HiveObject {
       isStreaming: isStreaming,
       link: link,
       localPath: localPath ?? this.localPath,
+      albumArtUrl: albumArtUrl,
     );
   }
 
@@ -62,7 +66,6 @@ class Track extends HiveObject {
   }
 
   /// Centralized logic to get the actual download/stream URL
-  /// Handles special cases like pillows.su
   String get effectiveUrl {
     if (link.contains('pillows.su/f/')) {
       try {
@@ -80,6 +83,7 @@ class Track extends HiveObject {
 class TrackAdapter extends TypeAdapter<Track> {
   @override
   final int typeId = 1;
+
   @override
   Track read(BinaryReader reader) {
     return Track(
@@ -93,6 +97,7 @@ class TrackAdapter extends TypeAdapter<Track> {
       isStreaming: reader.read(),
       link: reader.read(),
       localPath: reader.read(),
+      albumArtUrl: reader.read(), // Read new field
     );
   }
 
@@ -108,5 +113,6 @@ class TrackAdapter extends TypeAdapter<Track> {
     writer.write(obj.isStreaming);
     writer.write(obj.link);
     writer.write(obj.localPath);
+    writer.write(obj.albumArtUrl); // Write new field
   }
 }

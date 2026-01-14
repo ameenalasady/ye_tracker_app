@@ -92,10 +92,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         offset: const Offset(0, 20),
                       ),
                     ],
+                    image: (mediaItem.artUri != null)
+                        ? DecorationImage(
+                            image: NetworkImage(mediaItem.artUri.toString()),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
                   ),
-                  child: const Center(
-                    child: Icon(Icons.music_note_rounded, size: 120, color: Colors.white12),
-                  ),
+                  child: (mediaItem.artUri == null)
+                      ? const Center(
+                          child: Icon(Icons.music_note_rounded, size: 120, color: Colors.white12),
+                        )
+                      : null,
                 ),
               ),
 

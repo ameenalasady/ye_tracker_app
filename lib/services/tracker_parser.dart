@@ -47,14 +47,12 @@ class TrackerParser {
     final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 20));
     if (response.statusCode != 200) throw Exception("Failed to load Tab HTML");
 
-    // Dart 2.19/3.0+: Isolate.run is lighter and cleaner than compute
     return await Isolate.run(() => _parseHtml(response.body));
   }
 }
 
 List<Track> _parseHtml(String htmlBody) {
   final document = html_parser.parse(htmlBody);
-  // Fail fast if table missing
   final table = document.querySelector('table.waffle');
   if (table == null) return [];
 
@@ -65,12 +63,10 @@ List<Track> _parseHtml(String htmlBody) {
   Map<String, int> colMap = {};
   int startRowIndex = 0;
 
-  // Scan first 20 rows to find headers
   for (int i = 0; i < rows.length && i < 20; i++) {
     final cells = rows[i].children;
     if (cells.isEmpty) continue;
 
-    // Convert only once
     final texts = cells.map((e) => e.text.trim().toLowerCase()).toList();
 
     bool hasName = texts.contains('name');
@@ -99,9 +95,9 @@ List<Track> _parseHtml(String htmlBody) {
 
   final List<Track> tracks = [];
   String lastEra = "";
+  String lastEraImage = ""; // Variable to hold the current Era's artwork
   final regExpGoogle = RegExp(r'[?&]q=([^&]+)');
 
-  // Pre-fetch column indices for speed inside loop
   final idxName = colMap['name']!;
   final idxLength = colMap['length'] ?? -1;
   final idxLink = colMap['link'] ?? -1;
@@ -114,6 +110,20 @@ List<Track> _parseHtml(String htmlBody) {
   // --- 3. Parsing Rows ---
   for (int i = startRowIndex; i < rows.length; i++) {
     final cells = rows[i].children;
+
+    // --- Image Detection (Era Headers) ---
+    // We check the whole row for images before checking if it's a track
+    final imgs = rows[i].querySelectorAll('img');
+    if (imgs.isNotEmpty) {
+      for (var img in imgs) {
+        final src = img.attributes['src'];
+        // Google sheets images usually come from googleusercontent or similar
+        if (src != null && src.isNotEmpty) {
+          lastEraImage = src;
+        }
+      }
+    }
+
     if (cells.length <= idxName) { continue; }
 
     String rawName = cells[idxName].text.trim();
@@ -124,7 +134,6 @@ List<Track> _parseHtml(String htmlBody) {
 
     if (idxLink > -1 && idxLink < cells.length) {
       final cell = cells[idxLink];
-      // Check anchor tag first (faster than text search)
       final anchor = cell.querySelector('a');
       if (anchor != null) {
         lnk = anchor.attributes['href'] ?? "";
@@ -133,6 +142,7 @@ List<Track> _parseHtml(String htmlBody) {
       }
     }
 
+    // If it's not a valid track (no length AND no link), skip it
     if (len.isEmpty && (lnk.isEmpty || !lnk.contains('http'))) continue;
 
     String era = "";
@@ -146,7 +156,7 @@ List<Track> _parseHtml(String htmlBody) {
       era = lastEra;
     }
 
-    String artist = "Kanye West"; // Default
+    String artist = "Kanye West";
     String title = rawName;
 
     if (rawName.contains(" - ")) {
@@ -184,6 +194,7 @@ List<Track> _parseHtml(String htmlBody) {
         type: (idxType > -1 && idxType < cells.length) ? cells[idxType].text.trim() : "",
         isStreaming: streaming,
         link: lnk,
+        albumArtUrl: lastEraImage, // Assign the detected image
       ),
     );
   }

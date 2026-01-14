@@ -4,8 +4,8 @@ import 'package:audio_service/audio_service.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive/hive.dart'; // Import Hive Base
-import 'package:hive_flutter/hive_flutter.dart'; // Import Hive Flutter for .listenable()
+import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../models/track.dart';
@@ -72,7 +72,6 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    // FIXED: Cast box to Box to access .listenable()
     if (widget.track.isInBox) {
       return ValueListenableBuilder(
         valueListenable: (widget.track.box as Box).listenable(keys: [widget.track.key]),
@@ -93,7 +92,6 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     final mediaItemAsync = ref.watch(currentMediaItemProvider);
     final playbackStateAsync = ref.watch(playbackStateProvider);
 
-    // Check active auto-downloads
     final activeDownloads = ref.watch(activeDownloadsProvider).value ?? {};
     final isAutoDownloading = activeDownloads.contains(t.effectiveUrl);
 
@@ -140,17 +138,40 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
         ),
         child: Row(
           children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: isCurrentTrack ? activeBorderColor.withAlpha((0.15 * 255).toInt()) : Colors.white.withAlpha((0.05 * 255).toInt()),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: _buildLeadingIcon(isCurrentTrack, isPlaying, isBuffering),
-              ),
+            // --- ARTWORK OR ICON ---
+            Stack(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: isCurrentTrack ? activeBorderColor.withAlpha((0.15 * 255).toInt()) : Colors.white.withAlpha((0.05 * 255).toInt()),
+                    borderRadius: BorderRadius.circular(12),
+                    image: t.albumArtUrl.isNotEmpty
+                        ? DecorationImage(
+                            image: NetworkImage(t.albumArtUrl),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
+                  child: t.albumArtUrl.isEmpty
+                      ? Center(child: _buildLeadingIcon(isCurrentTrack, isPlaying, isBuffering))
+                      : null,
+                ),
+                // Overlay playing animation on top of image if playing
+                if (t.albumArtUrl.isNotEmpty && (isBuffering || (isCurrentTrack && isPlaying)))
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withAlpha((0.5 * 255).toInt()),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(child: _buildLeadingIcon(isCurrentTrack, isPlaying, isBuffering)),
+                  ),
+              ],
             ),
+
             const SizedBox(width: 16),
             Expanded(
               child: Column(

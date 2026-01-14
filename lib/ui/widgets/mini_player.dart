@@ -74,10 +74,18 @@ class MiniPlayer extends ConsumerWidget {
                         decoration: BoxDecoration(
                           color: const Color(0xFF1A1A1A),
                           borderRadius: BorderRadius.circular(10),
+                          image: (mediaItem.artUri != null)
+                              ? DecorationImage(
+                                  image: NetworkImage(mediaItem.artUri.toString()),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
                         ),
-                        child: const Center(
-                          child: Icon(Icons.music_note_rounded, color: Colors.white54),
-                        ),
+                        child: (mediaItem.artUri == null)
+                            ? const Center(
+                                child: Icon(Icons.music_note_rounded, color: Colors.white54),
+                              )
+                            : null,
                       ),
                     ),
                     const SizedBox(width: 12),
