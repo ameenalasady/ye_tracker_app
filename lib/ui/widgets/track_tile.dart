@@ -25,6 +25,7 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
+    // Reverted to original duration and reverse behavior
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600)
@@ -48,6 +49,7 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
 
     try {
       final dir = await getApplicationDocumentsDirectory();
+      // We still use displayName for the file name so it reads "Artist - Song.mp3" in the file system
       final safeName = track.displayName.replaceAll(RegExp(r'[^\w\s\.-]'), '').trim();
       final savePath = '${dir.path}/$safeName.mp3';
 
@@ -145,7 +147,7 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    t.displayName,
+                    t.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -155,14 +157,17 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      if(t.era.isNotEmpty) ...[
-                        Text(t.era, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                        Text(" • ", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                      ],
-                      Text(t.length, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                    ],
+
+                  // Subtitle
+                  Text(
+                    [
+                      t.artist,
+                      if (t.era.isNotEmpty) t.era,
+                      if (t.length.isNotEmpty) t.length
+                    ].where((s) => s.isNotEmpty).join(" • "),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                   ),
                 ],
               ),
@@ -184,14 +189,19 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
       return AnimatedBuilder(
         animation: _animController,
         builder: (context, child) {
-          return Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              _bar(0.6), const SizedBox(width: 3),
-              _bar(1.0), const SizedBox(width: 3),
-              _bar(0.4),
-            ],
+          // FIX: Wrap in a SizedBox with a fixed height (24 is enough for max height).
+          // CrossAxisAlignment.end ensures bars grow from the bottom up.
+          return SizedBox(
+            height: 24,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _bar(0.6), const SizedBox(width: 3),
+                _bar(1.0), const SizedBox(width: 3),
+                _bar(0.4),
+              ],
+            ),
           );
         },
       );
@@ -204,7 +214,10 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
   }
 
   Widget _bar(double scaleMultiplier) {
+    // Reverted to original logic: Controller Value + Random Jitter
+    // Max height approx: 8 + 10 + 4 = 22.0
     final height = 8.0 + (10.0 * _animController.value * scaleMultiplier) + (Random().nextDouble() * 4);
+
     return Container(
       width: 4,
       height: height,
