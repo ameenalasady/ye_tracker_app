@@ -17,29 +17,29 @@ class TrackList extends ConsumerWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.music_off, size: 64, color: Colors.grey),
+                Icon(Icons.graphic_eq, size: 64, color: Colors.white.withOpacity(0.1)),
                 const SizedBox(height: 16),
-                Text("No tracks found", style: Theme.of(context).textTheme.titleLarge),
+                Text(
+                  "No tracks found",
+                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16)
+                ),
               ],
             ),
           );
         }
 
-        // ListView.builder is efficient.
-        // cacheExtent keeps items in memory slightly offscreen for smoother scrolling.
-        return ListView.separated(
+        return ListView.builder(
           itemCount: tracks.length,
           cacheExtent: 1000,
-          padding: const EdgeInsets.only(bottom: 100), // Space for MiniPlayer
-          separatorBuilder: (_, __) => const Divider(height: 1, color: Colors.white10),
+          padding: const EdgeInsets.only(top: 8, bottom: 120), // Bottom padding for MiniPlayer
           itemBuilder: (context, index) => TrackTile(track: tracks[index]),
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFFFF5252))),
       error: (err, stack) => Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Text("Error: $err"),
+          child: Text("Error: $err", style: const TextStyle(color: Colors.red)),
         ),
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -12,13 +13,19 @@ import 'ui/screens/main_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Make status bar transparent for immersive feel
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+  ));
+
   // Initialize Hive
   await Hive.initFlutter();
   Hive.registerAdapter(SheetTabAdapter());
   Hive.registerAdapter(TrackAdapter());
   await Hive.openBox('settings');
 
-  // Initialize Audio Service (Singleton)
+  // Initialize Audio Service
   final audioHandler = await AudioService.init(
     builder: () => MyAudioHandler(),
     config: const AudioServiceConfig(
@@ -49,17 +56,15 @@ class YeTrackerApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF121212),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFA61C00),
-          brightness: Brightness.dark,
-          surface: const Color(0xFF1E1E1E),
+        scaffoldBackgroundColor: const Color(0xFF121212), // Deep dark background
+        fontFamily: 'Inter', // Ensure you have a nice font, or fallback to default
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFFFF5252), // Coral Red
+          surface: Color(0xFF1E1E1E),
+          background: Color(0xFF121212),
+          onSurface: Colors.white,
         ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF2C0B0E),
-          foregroundColor: Colors.white,
-          elevation: 0,
-        ),
+        iconTheme: const IconThemeData(color: Colors.white70),
       ),
       home: const MainScreen(),
     );

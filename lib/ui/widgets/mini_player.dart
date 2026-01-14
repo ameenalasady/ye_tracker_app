@@ -20,87 +20,127 @@ class MiniPlayer extends ConsumerWidget {
     final isLoading = processingState == AudioProcessingState.loading || processingState == AudioProcessingState.buffering;
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF25090C), // Slightly richer dark red/brown
-        border: Border(top: BorderSide(color: Colors.white10)),
-        boxShadow: [BoxShadow(color: Colors.black54, blurRadius: 15, offset: Offset(0, -4))],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // PROGRESS BAR
-          StreamBuilder<Duration>(
-            stream: AudioService.position,
-            builder: (context, snapshot) {
-              final position = snapshot.data ?? Duration.zero;
-              final duration = mediaItem.duration ?? Duration.zero;
-              double progress = 0.0;
-              if (duration.inMilliseconds > 0) {
-                progress = position.inMilliseconds / duration.inMilliseconds;
-                if (progress > 1.0) progress = 1.0;
-              }
-              return LinearProgressIndicator(
-                value: isLoading ? null : progress, // Indeterminate if loading
-                backgroundColor: Colors.transparent,
-                color: const Color(0xFFFF5252),
-                minHeight: 2,
-              );
-            },
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.white10,
-                    borderRadius: BorderRadius.circular(6),
-                    image: const DecorationImage(
-                      image: NetworkImage("https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Kanye_West_at_the_2009_Tribeca_Film_Festival_%28cropped%29.jpg/440px-Kanye_West_at_the_2009_Tribeca_Film_Festival_%28cropped%29.jpg"), // Placeholder or fetch album art if available
-                      fit: BoxFit.cover,
-                      opacity: 0.5
-                    )
-                  ),
-                  child: const Center(child: Icon(Icons.music_note, color: Colors.white)),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        mediaItem.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                      Text(
-                        mediaItem.artist ?? "Unknown Artist",
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 12, color: Colors.grey[400]),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(isLoading
-                    ? Icons.circle_outlined // visual placeholder while loading spinner overlay is active
-                    : (playing ? Icons.pause_circle_filled : Icons.play_circle_filled)),
-                  iconSize: 42,
-                  color: Colors.white,
-                  onPressed: () {
-                    if (playing) audioHandler.pause();
-                    else audioHandler.play();
-                  },
-                ),
-              ],
-            ),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      height: 70,
+      decoration: BoxDecoration(
+        color: const Color(0xFF2A2A2A).withOpacity(0.95),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.5),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          children: [
+            // Content
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  // Album Art / Icon
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A1A1A),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.music_note_rounded, color: Colors.white54),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+
+                  // Text
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          mediaItem.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Text(
+                          mediaItem.artist ?? "Unknown Artist",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Play Button
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(colors: [Color(0xFFFF7E5F), Color(0xFFFF5252)]),
+                    ),
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: Icon(
+                        isLoading ? Icons.more_horiz : (playing ? Icons.pause_rounded : Icons.play_arrow_rounded),
+                        color: Colors.black87,
+                        size: 26,
+                      ),
+                      onPressed: () {
+                        if (playing) audioHandler.pause();
+                        else audioHandler.play();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Progress Bar at Bottom
+            Positioned(
+              bottom: 0,
+              left: 16,
+              right: 16,
+              child: StreamBuilder<Duration>(
+                stream: AudioService.position,
+                builder: (context, snapshot) {
+                  final position = snapshot.data ?? Duration.zero;
+                  final duration = mediaItem.duration ?? Duration.zero;
+                  double progress = 0.0;
+                  if (duration.inMilliseconds > 0) {
+                    progress = position.inMilliseconds / duration.inMilliseconds;
+                    if (progress > 1.0) progress = 1.0;
+                  }
+                  if (isLoading) return const SizedBox.shrink();
+
+                  return Align(
+                    alignment: Alignment.bottomLeft,
+                    child: Container(
+                      height: 3,
+                      width: (MediaQuery.of(context).size.width - 64) * progress,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF5252),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

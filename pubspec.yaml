@@ -30,23 +30,23 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_riverpod: ^2.4.9 # State management
-  http: ^1.1.0 # Network requests
-  html: ^0.15.4 # Parsing HTML
-  hive: ^2.2.3 # Local Database (Caching)
+  flutter_riverpod: ^2.5.1  # Change from 3.1.0 back to this
+  http: ^1.1.0
+  html: ^0.15.4
+  hive: ^2.2.3
   hive_flutter: ^1.1.0
-  just_audio: ^0.9.36 # Audio Player
-  audio_service: ^0.18.12 # Background Audio support
-  path_provider: ^2.1.2 # File system access
-  permission_handler: ^11.1.0 # managing permissions
-  rxdart: ^0.27.7 # Stream combination
+  just_audio: ^0.9.40       # Change from 0.10.5 back to this
+  audio_service: ^0.18.12
+  path_provider: ^2.1.2
+  permission_handler: ^11.3.1 # Change from 12.0.1 back to this
+  rxdart: ^0.27.7           # Change from 0.28.0 back to this
   cached_network_image: ^3.3.1
-  dio: ^5.4.0 # For downloading files
+  dio: ^5.4.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^6.0.0
   hive_generator: ^2.0.1
   build_runner: ^2.4.8
 

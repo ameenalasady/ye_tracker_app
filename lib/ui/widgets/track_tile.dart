@@ -25,7 +25,10 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 600))..repeat(reverse: true);
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600)
+    )..repeat(reverse: true);
   }
 
   @override
@@ -69,7 +72,7 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Download Failed")));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Download Failed")));
       }
     } finally {
       if (mounted) setState(() => _downloading = false);
@@ -82,79 +85,107 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     final hasLink = t.link.isNotEmpty && t.link != "Link Needed";
     final isDownloaded = t.localPath.isNotEmpty && File(t.localPath).existsSync();
 
-    // Listen to stream providers
     final mediaItemAsync = ref.watch(currentMediaItemProvider);
     final playbackStateAsync = ref.watch(playbackStateProvider);
 
     final currentMediaId = mediaItemAsync.value?.id;
-    // Check if this specific track is the one loaded in AudioService
     final isCurrentTrack = currentMediaId == t.link || (t.localPath.isNotEmpty && currentMediaId == t.localPath);
 
     final playbackState = playbackStateAsync.value;
     final isPlaying = isCurrentTrack && (playbackState?.playing ?? false);
     final isBuffering = isCurrentTrack && (playbackState?.processingState == AudioProcessingState.buffering || playbackState?.processingState == AudioProcessingState.loading);
 
-    return Container(
-      color: isCurrentTrack ? const Color(0xFF3E1C1F) : Colors.transparent, // Highlight active track
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        // --- LEADING ICON: Visual State Indicator ---
-        leading: SizedBox(
-          width: 40,
-          height: 40,
-          child: Center(
-            child: _buildLeadingIcon(isCurrentTrack, isPlaying, isBuffering),
-          ),
+    // --- UI CONFIGURATION ---
+    final Color cardColor = const Color(0xFF252525);
+    final Color activeBorderColor = const Color(0xFFFF5252);
+
+    return GestureDetector(
+      onTap: () {
+        if (hasLink || isDownloaded) {
+           if (isCurrentTrack) {
+             final handler = ref.read(audioHandlerProvider);
+             isPlaying ? handler.pause() : handler.play();
+           } else {
+             ref.read(audioHandlerProvider).playTrack(t);
+           }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("No valid link found."), duration: Duration(milliseconds: 500)),
+          );
+        }
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: isCurrentTrack
+            ? Border.all(color: activeBorderColor.withOpacity(0.8), width: 1.5)
+            : Border.all(color: Colors.transparent, width: 1.5),
+          boxShadow: isCurrentTrack
+            ? [BoxShadow(color: activeBorderColor.withOpacity(0.25), blurRadius: 12, spreadRadius: 0)]
+            : [const BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))],
         ),
-        title: Text(
-          t.displayName,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontWeight: isCurrentTrack ? FontWeight.bold : FontWeight.w600,
-            color: isCurrentTrack ? const Color(0xFFFF5252) : Colors.white,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            const SizedBox(height: 4),
-            Text(
-              "${t.era} • ${t.length}",
-              style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+            // Leading Icon Box
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: isCurrentTrack ? activeBorderColor.withOpacity(0.15) : Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(
+                child: _buildLeadingIcon(isCurrentTrack, isPlaying, isBuffering),
+              ),
             ),
+            const SizedBox(width: 16),
+
+            // Text Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    t.displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: isCurrentTrack ? activeBorderColor : Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      if(t.era.isNotEmpty) ...[
+                        Text(t.era, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                        Text(" • ", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                      ],
+                      Text(t.length, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Action Icons
+            _buildTrailingAction(hasLink, isDownloaded),
           ],
         ),
-        trailing: _buildTrailingAction(hasLink, isDownloaded),
-        onTap: () {
-          if (hasLink || isDownloaded) {
-             // If currently playing, toggle pause
-             if (isCurrentTrack) {
-               final handler = ref.read(audioHandlerProvider);
-               isPlaying ? handler.pause() : handler.play();
-             } else {
-               ref.read(audioHandlerProvider).playTrack(t);
-             }
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("No valid link found."), duration: Duration(milliseconds: 500)),
-            );
-          }
-        },
       ),
     );
   }
 
   Widget _buildLeadingIcon(bool isCurrent, bool isPlaying, bool isBuffering) {
     if (isBuffering) {
-      return const SizedBox(
-        width: 20,
-        height: 20,
-        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-      );
+      return const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF5252)));
     }
     if (isCurrent && isPlaying) {
-      // Custom Animated Equalizer
       return AnimatedBuilder(
         animation: _animController,
         builder: (context, child) {
@@ -162,25 +193,23 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              _bar(0.6),
-              const SizedBox(width: 2),
-              _bar(1.0),
-              const SizedBox(width: 2),
+              _bar(0.6), const SizedBox(width: 3),
+              _bar(1.0), const SizedBox(width: 3),
               _bar(0.4),
             ],
           );
         },
       );
     }
-    if (isCurrent && !isPlaying) {
-      return const Icon(Icons.pause, color: Colors.white70);
-    }
-    return const Icon(Icons.music_note_rounded, color: Colors.white12);
+    return Icon(
+      isCurrent ? Icons.pause_rounded : Icons.music_note_rounded,
+      color: isCurrent ? const Color(0xFFFF5252) : Colors.white24,
+      size: 24,
+    );
   }
 
   Widget _bar(double scaleMultiplier) {
-    // Generate random height based on controller
-    final height = 8.0 + (12.0 * _animController.value * scaleMultiplier) + (Random().nextDouble() * 4);
+    final height = 8.0 + (10.0 * _animController.value * scaleMultiplier) + (Random().nextDouble() * 4);
     return Container(
       width: 4,
       height: height,
@@ -193,19 +222,21 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
 
   Widget _buildTrailingAction(bool hasLink, bool isDownloaded) {
     if (_downloading) {
-      return const SizedBox(
-        width: 24,
-        height: 24,
-        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54),
-      );
+      return const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24));
     }
     if (isDownloaded) {
-      return const Icon(Icons.check_circle, color: Colors.green, size: 20);
+      return const Icon(Icons.check_circle_rounded, color: Color(0xFF4CAF50), size: 24);
     }
     if (hasLink && widget.track.link.contains('pillows.su')) {
-      return IconButton(
-        icon: const Icon(Icons.download_rounded, color: Colors.white38),
-        onPressed: () => _download(widget.track),
+      return Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withOpacity(0.05),
+        ),
+        child: IconButton(
+          icon: const Icon(Icons.download_rounded, color: Colors.white38, size: 20),
+          onPressed: () => _download(widget.track),
+        ),
       );
     }
     return const SizedBox.shrink();
