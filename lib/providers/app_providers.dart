@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 import '../models/sheet_tab.dart';
@@ -12,6 +12,15 @@ final searchQueryProvider = StateProvider<String>((ref) => "");
 // Audio Handler Injection
 final audioHandlerProvider = Provider<MyAudioHandler>((ref) {
   throw UnimplementedError("Initialize in main.dart");
+});
+
+// Stream Providers for Real-time UI updates
+final playbackStateProvider = StreamProvider<PlaybackState>((ref) {
+  return ref.watch(audioHandlerProvider).playbackState;
+});
+
+final currentMediaItemProvider = StreamProvider<MediaItem?>((ref) {
+  return ref.watch(audioHandlerProvider).mediaItem;
 });
 
 // Fetch Tabs
@@ -31,7 +40,6 @@ final tracksProvider = FutureProvider<List<Track>>((ref) async {
 
   final boxName = 'tracks_${tab.gid}';
 
-  // Open box efficiently
   Box<Track> box;
   if (Hive.isBoxOpen(boxName)) {
     box = Hive.box<Track>(boxName);
@@ -44,18 +52,15 @@ final tracksProvider = FutureProvider<List<Track>>((ref) async {
     }
   }
 
-  // Return cached data immediately if available (Offline First)
   if (box.isNotEmpty) {
     return box.values.toList();
   }
 
-  // Fetch from Network
   try {
     final source = ref.read(sourceUrlProvider);
     final parser = TrackerParser(source);
     final tracks = await parser.fetchTracksForTab(tab.gid);
 
-    // Batch write for performance
     await box.clear();
     await box.addAll(tracks);
 
@@ -66,15 +71,12 @@ final tracksProvider = FutureProvider<List<Track>>((ref) async {
   }
 });
 
-// Filtered Tracks (Computed Provider)
-// This prevents the UI from calculating filters on every frame.
 final filteredTracksProvider = Provider<AsyncValue<List<Track>>>((ref) {
   final tracksAsync = ref.watch(tracksProvider);
   final query = ref.watch(searchQueryProvider).trim().toLowerCase();
 
   return tracksAsync.whenData((tracks) {
     if (query.isEmpty) return tracks;
-    // Uses the pre-calculated searchIndex from the Model
     return tracks.where((t) => t.searchIndex.contains(query)).toList();
   });
 });

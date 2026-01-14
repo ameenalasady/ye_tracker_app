@@ -15,6 +15,7 @@ class MainScreen extends ConsumerStatefulWidget {
 
 class _MainScreenState extends ConsumerState<MainScreen> {
   late final TextEditingController _searchController;
+  bool _isRefreshing = false;
 
   @override
   void initState() {
@@ -35,7 +36,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Ye Tracker", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          "Ye Tracker",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.link),
@@ -43,16 +47,36 @@ class _MainScreenState extends ConsumerState<MainScreen> {
             tooltip: 'Change Source',
           ),
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () async {
-              if (selectedTab != null) {
-                final boxName = 'tracks_${selectedTab.gid}';
-                if (Hive.isBoxOpen(boxName)) await Hive.box<Track>(boxName).clear();
-                ref.invalidate(tracksProvider);
-              } else {
-                ref.invalidate(tabsProvider);
-              }
-            },
+            icon: _isRefreshing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.refresh),
+            onPressed: _isRefreshing
+                ? null
+                : () async {
+                    setState(() => _isRefreshing = true);
+
+                    // Slight delay to ensure UI updates and "feels" like a refresh
+                    await Future.delayed(const Duration(milliseconds: 500));
+
+                    if (ref.read(selectedTabProvider) != null) {
+                      final tab = ref.read(selectedTabProvider)!;
+                      final boxName = 'tracks_${tab.gid}';
+                      if (Hive.isBoxOpen(boxName))
+                        await Hive.box<Track>(boxName).clear();
+                      ref.invalidate(tracksProvider);
+                    } else {
+                      ref.invalidate(tabsProvider);
+                    }
+
+                    if (mounted) setState(() => _isRefreshing = false);
+                  },
             tooltip: 'Refresh',
           ),
         ],
@@ -66,8 +90,11 @@ class _MainScreenState extends ConsumerState<MainScreen> {
               leading: const Icon(Icons.search, color: Colors.grey),
               elevation: WidgetStateProperty.all(0),
               backgroundColor: WidgetStateProperty.all(const Color(0xFF333333)),
-              textStyle: WidgetStateProperty.all(const TextStyle(color: Colors.white)),
-              onChanged: (val) => ref.read(searchQueryProvider.notifier).state = val,
+              textStyle: WidgetStateProperty.all(
+                const TextStyle(color: Colors.white),
+              ),
+              onChanged: (val) =>
+                  ref.read(searchQueryProvider.notifier).state = val,
               trailing: [
                 if (_searchController.text.isNotEmpty)
                   IconButton(
@@ -76,7 +103,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                       _searchController.clear();
                       ref.read(searchQueryProvider.notifier).state = "";
                     },
-                  )
+                  ),
               ],
             ),
           ),
@@ -86,7 +113,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         data: (tabs) {
           if (selectedTab == null && tabs.isNotEmpty) {
             // Select first tab by default without scheduling a rebuild during build
-            Future.microtask(() => ref.read(selectedTabProvider.notifier).state = tabs.first);
+            Future.microtask(
+              () => ref.read(selectedTabProvider.notifier).state = tabs.first,
+            );
             return const Center(child: CircularProgressIndicator());
           }
 
@@ -97,7 +126,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                 color: const Color(0xFF1E1E1E),
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   itemCount: tabs.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 8),
                   itemBuilder: (ctx, index) {
@@ -118,10 +150,14 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                       backgroundColor: Colors.white10,
                       labelStyle: TextStyle(
                         color: isSelected ? Colors.white : Colors.white70,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                       ),
                       side: BorderSide.none,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                     );
                   },
                 ),
@@ -132,7 +168,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text("Connection Error.\n$err", textAlign: TextAlign.center)),
+        error: (err, stack) => Center(
+          child: Text("Connection Error.\n$err", textAlign: TextAlign.center),
+        ),
       ),
     );
   }
@@ -145,10 +183,16 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         title: const Text("Set Source"),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(labelText: "Domain", hintText: "yetracker.net"),
+          decoration: const InputDecoration(
+            labelText: "Domain",
+            hintText: "yetracker.net",
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel"),
+          ),
           TextButton(
             onPressed: () {
               ref.read(sourceUrlProvider.notifier).state = controller.text;

@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:math';
+import 'package:audio_service/audio_service.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,15 +18,25 @@ class TrackTile extends ConsumerStatefulWidget {
   ConsumerState<TrackTile> createState() => _TrackTileState();
 }
 
-class _TrackTileState extends ConsumerState<TrackTile> {
+class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProviderStateMixin {
   bool _downloading = false;
+  late AnimationController _animController;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 600))..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
 
   Future<void> _download(Track track) async {
     if (Platform.isAndroid) {
-       // Android 13+ (SDK 33) doesn't need external storage permission for app docs
-       if (await Permission.storage.request().isGranted == false) {
-         // Proceeding anyway as getApplicationDocumentsDirectory usually doesn't need explicit perm
-       }
+      if (await Permission.storage.request().isGranted == false) {}
     }
 
     if (!mounted) return;
@@ -32,43 +44,32 @@ class _TrackTileState extends ConsumerState<TrackTile> {
 
     try {
       final dir = await getApplicationDocumentsDirectory();
-      // Sanitize filename to prevent file system errors
       final safeName = track.displayName.replaceAll(RegExp(r'[^\w\s\.-]'), '').trim();
       final savePath = '${dir.path}/$safeName.mp3';
 
       String downloadUrl = track.link;
-      // Handle Pillows API conversion
       if (track.link.contains('pillows.su/f/')) {
          final cleanUri = Uri.parse(track.link).replace(query: '').toString();
          final id = cleanUri.split('/f/').last.replaceAll('/', '');
          downloadUrl = 'https://api.pillows.su/api/download/$id.mp3';
       }
 
-      // Download with timeout
       await Dio().download(
         downloadUrl,
         savePath,
         options: Options(receiveTimeout: const Duration(minutes: 5)),
       );
 
-      // Update Hive Object
       final newTrack = track.copyWith(localPath: savePath);
       final boxName = 'tracks_${ref.read(selectedTabProvider)!.gid}';
 
       if (Hive.isBoxOpen(boxName)) {
         await Hive.box<Track>(boxName).put(track.key, newTrack);
-        // Force refresh of track list to show checkmark (optional, Hive usually reactive)
         ref.invalidate(tracksProvider);
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Download Complete"), duration: Duration(seconds: 1)),
-        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Download Failed: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Download Failed")));
       }
     } finally {
       if (mounted) setState(() => _downloading = false);
@@ -81,57 +82,132 @@ class _TrackTileState extends ConsumerState<TrackTile> {
     final hasLink = t.link.isNotEmpty && t.link != "Link Needed";
     final isDownloaded = t.localPath.isNotEmpty && File(t.localPath).existsSync();
 
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      title: Text(
-        t.displayName,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 4),
-          Text(
-            "${t.era} • ${t.length}",
-            style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+    // Listen to stream providers
+    final mediaItemAsync = ref.watch(currentMediaItemProvider);
+    final playbackStateAsync = ref.watch(playbackStateProvider);
+
+    final currentMediaId = mediaItemAsync.value?.id;
+    // Check if this specific track is the one loaded in AudioService
+    final isCurrentTrack = currentMediaId == t.link || (t.localPath.isNotEmpty && currentMediaId == t.localPath);
+
+    final playbackState = playbackStateAsync.value;
+    final isPlaying = isCurrentTrack && (playbackState?.playing ?? false);
+    final isBuffering = isCurrentTrack && (playbackState?.processingState == AudioProcessingState.buffering || playbackState?.processingState == AudioProcessingState.loading);
+
+    return Container(
+      color: isCurrentTrack ? const Color(0xFF3E1C1F) : Colors.transparent, // Highlight active track
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        // --- LEADING ICON: Visual State Indicator ---
+        leading: SizedBox(
+          width: 40,
+          height: 40,
+          child: Center(
+            child: _buildLeadingIcon(isCurrentTrack, isPlaying, isBuffering),
           ),
-          if (t.notes.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Text(
-                t.notes,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 11, color: Colors.grey[600], fontStyle: FontStyle.italic),
-              ),
+        ),
+        title: Text(
+          t.displayName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontWeight: isCurrentTrack ? FontWeight.bold : FontWeight.w600,
+            color: isCurrentTrack ? const Color(0xFFFF5252) : Colors.white,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Text(
+              "${t.era} • ${t.length}",
+              style: TextStyle(fontSize: 12, color: Colors.grey[400]),
             ),
-        ],
+          ],
+        ),
+        trailing: _buildTrailingAction(hasLink, isDownloaded),
+        onTap: () {
+          if (hasLink || isDownloaded) {
+             // If currently playing, toggle pause
+             if (isCurrentTrack) {
+               final handler = ref.read(audioHandlerProvider);
+               isPlaying ? handler.pause() : handler.play();
+             } else {
+               ref.read(audioHandlerProvider).playTrack(t);
+             }
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("No valid link found."), duration: Duration(milliseconds: 500)),
+            );
+          }
+        },
       ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (isDownloaded)
-            const Icon(Icons.check_circle, color: Colors.green, size: 20)
-          else if (_downloading)
-            const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-          else if (hasLink && t.link.contains('pillows.su'))
-            IconButton(
-              icon: const Icon(Icons.download, color: Colors.white70),
-              onPressed: () => _download(t),
-            ),
-        ],
-      ),
-      onTap: () {
-        if (hasLink || isDownloaded) {
-          ref.read(audioHandlerProvider).playTrack(t);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("No valid link found.")),
-          );
-        }
-      },
     );
+  }
+
+  Widget _buildLeadingIcon(bool isCurrent, bool isPlaying, bool isBuffering) {
+    if (isBuffering) {
+      return const SizedBox(
+        width: 20,
+        height: 20,
+        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+      );
+    }
+    if (isCurrent && isPlaying) {
+      // Custom Animated Equalizer
+      return AnimatedBuilder(
+        animation: _animController,
+        builder: (context, child) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _bar(0.6),
+              const SizedBox(width: 2),
+              _bar(1.0),
+              const SizedBox(width: 2),
+              _bar(0.4),
+            ],
+          );
+        },
+      );
+    }
+    if (isCurrent && !isPlaying) {
+      return const Icon(Icons.pause, color: Colors.white70);
+    }
+    return const Icon(Icons.music_note_rounded, color: Colors.white12);
+  }
+
+  Widget _bar(double scaleMultiplier) {
+    // Generate random height based on controller
+    final height = 8.0 + (12.0 * _animController.value * scaleMultiplier) + (Random().nextDouble() * 4);
+    return Container(
+      width: 4,
+      height: height,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFF5252),
+        borderRadius: BorderRadius.circular(2),
+      ),
+    );
+  }
+
+  Widget _buildTrailingAction(bool hasLink, bool isDownloaded) {
+    if (_downloading) {
+      return const SizedBox(
+        width: 24,
+        height: 24,
+        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54),
+      );
+    }
+    if (isDownloaded) {
+      return const Icon(Icons.check_circle, color: Colors.green, size: 20);
+    }
+    if (hasLink && widget.track.link.contains('pillows.su')) {
+      return IconButton(
+        icon: const Icon(Icons.download_rounded, color: Colors.white38),
+        onPressed: () => _download(widget.track),
+      );
+    }
+    return const SizedBox.shrink();
   }
 }
