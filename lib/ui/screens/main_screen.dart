@@ -42,7 +42,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       ref.invalidate(tabsProvider);
     }
     // Refresh cache size calculation
-    ref.refresh(cacheSizeProvider);
+    ref.invalidate(cacheSizeProvider);
 
     if (mounted) setState(() => _isRefreshing = false);
   }
@@ -145,7 +145,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       itemCount: tabs.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 10),
+                      separatorBuilder: (_, _) => const SizedBox(width: 10),
                       itemBuilder: (ctx, index) {
                         final tab = tabs[index];
                         final isSelected = tab == selectedTab;
@@ -184,7 +184,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                   );
                 },
                 loading: () => const SizedBox(height: 40),
-                error: (_, __) => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
               ),
 
               const SizedBox(height: 10),
@@ -304,7 +304,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
 
                     if (confirm == true) {
                       await CacheManager.clearAllCache();
-                      ref.refresh(cacheSizeProvider); // Recalculate size
+                      ref.invalidate(cacheSizeProvider); // Recalculate size
                       ref.invalidate(tracksProvider); // Refresh track lists to remove checkmarks
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Cache cleared")));
