@@ -61,7 +61,6 @@ class YeTrackerApp extends StatelessWidget {
         colorScheme: const ColorScheme.dark(
           primary: Color(0xFFFF5252), // Coral Red
           surface: Color(0xFF1E1E1E),
-          background: Color(0xFF121212),
           onSurface: Colors.white,
         ),
         iconTheme: const IconThemeData(color: Colors.white70),

@@ -99,8 +99,11 @@ class MiniPlayer extends ConsumerWidget {
                         size: 26,
                       ),
                       onPressed: () {
-                        if (playing) audioHandler.pause();
-                        else audioHandler.play();
+                        if (playing) {
+                          audioHandler.pause();
+                        } else {
+                          audioHandler.play();
+                        }
                       },
                     ),
                   ),

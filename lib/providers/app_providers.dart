@@ -142,7 +142,7 @@ class CacheManager {
 
     // Iterate all tabs if possible, or just open boxes
     // This is a "best effort" cleanup for open boxes
-    for (var key in Hive.box('settings').keys) {
+    for (var _ in Hive.box('settings').keys) {
       // If we stored tab lists, we could iterate them.
     }
 

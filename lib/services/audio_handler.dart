@@ -125,7 +125,6 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     }
   }
 
-  @override
   Future<void> dispose() async {
     await _player.dispose();
   }

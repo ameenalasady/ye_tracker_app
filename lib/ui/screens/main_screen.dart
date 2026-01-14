@@ -101,15 +101,15 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                       decoration: BoxDecoration(
                         color: const Color(0xFF252525),
                         borderRadius: BorderRadius.circular(15),
-                        border: Border.all(color: Colors.white.withOpacity(0.05)),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
                       ),
                       child: TextField(
                         controller: _searchController,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
                           hintText: "Search tracks...",
-                          hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                          prefixIcon: Icon(Icons.search_rounded, color: Colors.white.withOpacity(0.3)),
+                          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+                          prefixIcon: Icon(Icons.search_rounded, color: Colors.white.withValues(alpha: 0.3)),
                           suffixIcon: _searchController.text.isNotEmpty
                             ? IconButton(
                                 icon: const Icon(Icons.close_rounded, size: 18, color: Colors.white54),
@@ -164,7 +164,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                                 : const LinearGradient(colors: [Color(0xFF2A2A2A), Color(0xFF2A2A2A)]),
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: isSelected
-                                ? [BoxShadow(color: const Color(0xFFFF5252).withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 2))]
+                                ? [BoxShadow(color: const Color(0xFFFF5252).withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 2))]
                                 : [],
                             ),
                             child: Center(
@@ -271,7 +271,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
               children: [
                 SwitchListTile(
                   value: autoDownload,
-                  activeColor: const Color(0xFFFF5252),
+                  activeThumbColor: const Color(0xFFFF5252),
                   title: const Text("Auto-Download on Play", style: TextStyle(color: Colors.white)),
                   subtitle: const Text("Automatically save songs when you play them", style: TextStyle(color: Colors.grey, fontSize: 12)),
                   onChanged: (val) {
@@ -279,7 +279,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                     Hive.box('settings').put('auto_download', val);
                   },
                 ),
-                Divider(height: 1, color: Colors.white.withOpacity(0.05)),
+                Divider(height: 1, color: Colors.white.withValues(alpha: 0.05)),
                 ListTile(
                   title: const Text("Clear Cache", style: TextStyle(color: Colors.white)),
                   subtitle: Text(

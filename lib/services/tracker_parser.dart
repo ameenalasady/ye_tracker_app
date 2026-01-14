@@ -3,7 +3,6 @@ import 'dart:isolate';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as html_parser;
-import 'package:html/dom.dart';
 import '../models/sheet_tab.dart';
 import '../models/track.dart';
 
@@ -37,7 +36,7 @@ class TrackerParser {
         }
       }
     }
-    if (tabList.isEmpty) throw Exception("No tabs found. Check URL.");
+    if (tabList.isEmpty) { throw Exception("No tabs found. Check URL."); }
     return tabList;
   }
 
@@ -81,21 +80,22 @@ List<Track> _parseHtml(String htmlBody) {
       startRowIndex = i + 1;
       for (int c = 0; c < texts.length; c++) {
         final h = texts[c];
-        if (h.contains('era')) colMap['era'] = c;
-        else if (h == 'name') colMap['name'] = c;
-        else if (h.contains('notes')) colMap['notes'] = c;
-        else if ((h.contains('length') || h.contains('time')) && !h.contains('available')) colMap['length'] = c;
-        else if (h == 'length') colMap['length'] = c;
-        else if (h.contains('release') || h.contains('date')) colMap['date'] = c;
-        else if (h.contains('type')) colMap['type'] = c;
-        else if (h.contains('streaming')) colMap['streaming'] = c;
-        else if (h.contains('link')) colMap['link'] = c;
+        if (h.contains('era')) {
+          colMap['era'] = c;
+        } else if (h == 'name') { colMap['name'] = c; }
+        else if (h.contains('notes')) { colMap['notes'] = c; }
+        else if ((h.contains('length') || h.contains('time')) && !h.contains('available')) { colMap['length'] = c; }
+        else if (h == 'length') { colMap['length'] = c; }
+        else if (h.contains('release') || h.contains('date')) { colMap['date'] = c; }
+        else if (h.contains('type')) { colMap['type'] = c; }
+        else if (h.contains('streaming')) { colMap['streaming'] = c; }
+        else if (h.contains('link')) { colMap['link'] = c; }
       }
       break;
     }
   }
 
-  if (!colMap.containsKey('name')) return [];
+  if (!colMap.containsKey('name')) { return []; }
 
   final List<Track> tracks = [];
   String lastEra = "";
@@ -114,10 +114,10 @@ List<Track> _parseHtml(String htmlBody) {
   // --- 3. Parsing Rows ---
   for (int i = startRowIndex; i < rows.length; i++) {
     final cells = rows[i].children;
-    if (cells.length <= idxName) continue;
+    if (cells.length <= idxName) { continue; }
 
     String rawName = cells[idxName].text.trim();
-    if (rawName.isEmpty || rawName == "Name") continue;
+    if (rawName.isEmpty || rawName == "Name") { continue; }
 
     String len = (idxLength > -1 && idxLength < cells.length) ? cells[idxLength].text.trim() : "";
     String lnk = "";
@@ -140,8 +140,11 @@ List<Track> _parseHtml(String htmlBody) {
       era = cells[idxEra].text.trim();
     }
 
-    if (era.isNotEmpty) lastEra = era;
-    else era = lastEra;
+    if (era.isNotEmpty) {
+      lastEra = era;
+    } else {
+      era = lastEra;
+    }
 
     String artist = "Kanye West"; // Default
     String title = rawName;
@@ -154,7 +157,7 @@ List<Track> _parseHtml(String htmlBody) {
       }
     } else {
       String type = (idxType > -1 && idxType < cells.length) ? cells[idxType].text.trim().toLowerCase() : "";
-      if (type == 'production') artist = "";
+      if (type == 'production') { artist = ""; }
     }
 
     // Clean Google Redirection Links
