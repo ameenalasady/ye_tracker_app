@@ -26,8 +26,8 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600)
-    )..repeat(reverse: true);
+      duration: const Duration(milliseconds: 1000), // Slower for smoother wave
+    )..repeat(); // Continuous loop without reversing looks better for sine waves
   }
 
   @override
@@ -274,10 +274,13 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
             child: Row(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _bar(0.6), const SizedBox(width: 3),
-                _bar(1.0), const SizedBox(width: 3),
-                _bar(0.4),
+                _buildBar(0),
+                const SizedBox(width: 3),
+                _buildBar(1),
+                const SizedBox(width: 3),
+                _buildBar(2),
               ],
             ),
           );
@@ -291,8 +294,20 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     );
   }
 
-  Widget _bar(double scaleMultiplier) {
-    final height = 8.0 + (10.0 * _animController.value * scaleMultiplier) + (Random().nextDouble() * 4);
+  Widget _buildBar(int index) {
+    // Smooth Sine Wave Animation
+    // We use the controller value (0 to 1) multiplied by 2*pi for a full sine cycle.
+    // We add an offset based on the index so the bars don't move in unison.
+
+    final double t = _animController.value;
+    final double offset = index * (pi / 2); // 90-degree phase shift per bar
+
+    // sin() returns -1 to 1. We map it to 0 to 1 using 0.5 * (sin + 1)
+    final double wave = 0.5 * (sin(t * 2 * pi + offset) + 1);
+
+    // Map the wave (0.0 to 1.0) to a Height (6.0 to 18.0)
+    final double height = 6.0 + (wave * 12.0);
+
     return Container(
       width: 4,
       height: height,
