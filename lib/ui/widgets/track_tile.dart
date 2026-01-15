@@ -137,24 +137,25 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
 
     final isProcessingDownload = _manualDownloading || isAutoDownloading;
 
-    // --- Comparison Logic ---
-    final currentExtras = mediaItemAsync.value?.extras;
-    final currentTrackObj = currentExtras?['track_obj'] as Track?;
-
+    // --- COMPARISON LOGIC FOR HIGHLIGHTING ---
+    final mediaItem = mediaItemAsync.value;
     bool isCurrentTrack = false;
 
-    if (currentTrackObj != null) {
-      isCurrentTrack = currentTrackObj == t;
-    } else {
-      final currentMediaId = mediaItemAsync.value?.id;
-      isCurrentTrack = currentMediaId == t.effectiveUrl ||
-                       (t.localPath.isNotEmpty && currentMediaId == t.localPath);
+    if (mediaItem != null) {
+      final currentTrackObj = mediaItem.extras?['track_obj'] as Track?;
+      if (currentTrackObj != null) {
+        // Use the overridden == operator in Track (check models/track.dart)
+        isCurrentTrack = currentTrackObj == t;
+      } else {
+        // Fallback to ID comparison
+        isCurrentTrack = mediaItem.id == t.effectiveUrl ||
+                         (t.localPath.isNotEmpty && mediaItem.id == t.localPath);
+      }
     }
 
     final playbackState = playbackStateAsync.value;
     final processingState = playbackState?.processingState;
 
-    // --- FIX: Logic to stop animation when song is completed ---
     final isPlaying = isCurrentTrack &&
                       (playbackState?.playing ?? false) &&
                       processingState != AudioProcessingState.completed;
@@ -171,13 +172,32 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
       onTap: () {
         if (hasLink || isDownloaded) {
            if (widget.onTapOverride != null) {
+             // Case: Playlist screen or special context where the parent defines the queue
              widget.onTapOverride!();
            } else {
+             final handler = ref.read(audioHandlerProvider);
              if (isCurrentTrack) {
-               final handler = ref.read(audioHandlerProvider);
                isPlaying ? handler.pause() : handler.play();
              } else {
-               ref.read(audioHandlerProvider).playTrack(t);
+               // --- CHANGED: QUEUE LOGIC ---
+               // Get the current visible list (Filter/Search/Sort applied)
+               // This ensures only the "context" tracks are added to the queue
+               final currentContextList = ref.read(filteredTracksProvider).value ?? [];
+
+               if (currentContextList.isEmpty) {
+                 // Fallback if list is somehow empty
+                 handler.playTrack(t);
+               } else {
+                 // Find index of clicked track in the visible list
+                 final index = currentContextList.indexOf(t);
+                 if (index != -1) {
+                   // Queue the whole context list, starting at the clicked track
+                   handler.playPlaylist(currentContextList, index);
+                 } else {
+                   // Fallback if track not found in list (shouldn't happen)
+                   handler.playTrack(t);
+                 }
+               }
              }
            }
         } else {

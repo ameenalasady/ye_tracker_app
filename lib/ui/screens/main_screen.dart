@@ -6,7 +6,7 @@ import '../../models/playlist.dart';
 import '../../providers/app_providers.dart';
 import '../widgets/mini_player.dart';
 import '../widgets/track_list.dart';
-import 'playlist_detail_screen.dart'; // Import this
+import 'playlist_detail_screen.dart';
 
 class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
@@ -63,8 +63,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           Column(
             children: [
               const SizedBox(height: 50),
-
-              // --- HEADER & SEARCH ---
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
                 child: Column(
@@ -75,41 +73,24 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                       children: [
                         const Text(
                           "Ye Tracker",
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -1,
-                            color: Colors.white,
-                          ),
+                          style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, letterSpacing: -1, color: Colors.white),
                         ),
                         Row(
                           children: [
-                            // NEW: Library / Playlist Button
                             IconButton(
                               icon: const Icon(Icons.library_music_rounded, color: Colors.white54),
                               onPressed: () => _showPlaylistsSheet(context),
                             ),
-                            // Filter Button
                             Stack(
                               children: [
                                 IconButton(
-                                  icon: Icon(
-                                    Icons.filter_list_rounded,
-                                    color: isFilterActive ? const Color(0xFFFF5252) : Colors.white54
-                                  ),
+                                  icon: Icon(Icons.filter_list_rounded, color: isFilterActive ? const Color(0xFFFF5252) : Colors.white54),
                                   onPressed: () => _showFilterSheet(context),
                                 ),
                                 if (isFilterActive)
                                   Positioned(
-                                    right: 8,
-                                    top: 8,
-                                    child: Container(
-                                      width: 8, height: 8,
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFFFF5252),
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
+                                    right: 8, top: 8,
+                                    child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: Color(0xFFFF5252), shape: BoxShape.circle)),
                                   ),
                               ],
                             ),
@@ -128,8 +109,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-
-                    // Search Bar
                     Container(
                       height: 50,
                       decoration: BoxDecoration(
@@ -162,17 +141,13 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                   ],
                 ),
               ),
-
               const SizedBox(height: 16),
-
-              // --- TABS ---
               tabsAsync.when(
                 data: (tabs) {
                   if (selectedTab == null && tabs.isNotEmpty) {
                     Future.microtask(() => ref.read(selectedTabProvider.notifier).state = tabs.first);
                     return const SizedBox(height: 40);
                   }
-
                   return SizedBox(
                     height: 40,
                     child: ListView.separated(
@@ -222,15 +197,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                 loading: () => const SizedBox(height: 40),
                 error: (_, _) => const SizedBox.shrink(),
               ),
-
               const SizedBox(height: 10),
-
-              // --- TRACK LIST ---
               const Expanded(child: TrackList()),
             ],
           ),
-
-          // --- FLOATING PLAYER ---
           const Align(
             alignment: Alignment.bottomCenter,
             child: MiniPlayer(),
@@ -240,15 +210,13 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     );
   }
 
-  // --- PLAYLIST SHEET ---
+  // Helper methods for sheets (Playlists, Filter, Settings) remain unchanged
   void _showPlaylistsSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E1E1E),
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
       builder: (ctx) => const PlaylistsSheet(),
     );
   }
@@ -258,9 +226,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       context: context,
       backgroundColor: const Color(0xFF1E1E1E),
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
       builder: (ctx) => const FilterSheet(),
     );
   }
@@ -270,9 +236,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       context: context,
       backgroundColor: const Color(0xFF1E1E1E),
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
       builder: (ctx) => const SettingsSheet(),
     );
   }

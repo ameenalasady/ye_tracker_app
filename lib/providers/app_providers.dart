@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
-import 'package:hive_flutter/hive_flutter.dart'; // Added
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/playlist.dart';
 import '../models/sheet_tab.dart';
@@ -15,14 +15,11 @@ final sourceUrlProvider = StateProvider<String>((ref) => "yetracker.net");
 final searchQueryProvider = StateProvider<String>((ref) => "");
 
 // --- SORTING & FILTERING ---
-
 enum SortOption { defaultOrder, newest, oldest, nameAz, nameZa, shortest, longest }
-
 final sortOptionProvider = StateProvider<SortOption>((ref) => SortOption.defaultOrder);
 final selectedErasProvider = StateProvider<Set<String>>((ref) => {});
 
 // --- SETTINGS PROVIDERS ---
-
 final autoDownloadProvider = StateProvider<bool>((ref) {
   final box = Hive.box('settings');
   return box.get('auto_download', defaultValue: true);
@@ -47,7 +44,6 @@ final cacheSizeProvider = FutureProvider<String>((ref) async {
 });
 
 // --- AUDIO HANDLER ---
-
 final audioHandlerProvider = Provider<MyAudioHandler>((ref) {
   throw UnimplementedError("Initialize in main.dart");
 });
@@ -58,6 +54,24 @@ final playbackStateProvider = StreamProvider<PlaybackState>((ref) {
 
 final currentMediaItemProvider = StreamProvider<MediaItem?>((ref) {
   return ref.watch(audioHandlerProvider).mediaItem;
+});
+
+// --- NEW: Queue Provider ---
+final queueProvider = StreamProvider<List<MediaItem>>((ref) {
+  return ref.watch(audioHandlerProvider).queue;
+});
+
+// --- NEW: Shuffle/Repeat Providers (Convenience) ---
+final shuffleModeProvider = StreamProvider<AudioServiceShuffleMode>((ref) {
+  return ref.watch(audioHandlerProvider).playbackState
+      .map((state) => state.shuffleMode)
+      .distinct();
+});
+
+final repeatModeProvider = StreamProvider<AudioServiceRepeatMode>((ref) {
+  return ref.watch(audioHandlerProvider).playbackState
+      .map((state) => state.repeatMode)
+      .distinct();
 });
 
 final activeDownloadsProvider = StreamProvider<Set<String>>((ref) {
@@ -77,7 +91,6 @@ final activeDownloadsProvider = StreamProvider<Set<String>>((ref) {
 });
 
 // --- DATA FETCHING ---
-
 final tabsProvider = FutureProvider<List<SheetTab>>((ref) async {
   final source = ref.watch(sourceUrlProvider);
   final parser = TrackerParser(source);
@@ -123,7 +136,6 @@ final tracksProvider = FutureProvider<List<Track>>((ref) async {
 });
 
 // --- PLAYLISTS PROVIDER ---
-
 final playlistsProvider = StateNotifierProvider<PlaylistsNotifier, List<Playlist>>((ref) {
   return PlaylistsNotifier();
 });
@@ -141,7 +153,6 @@ class PlaylistsNotifier extends StateNotifier<List<Playlist>> {
     } else {
       _box = Hive.box<Playlist>('playlists');
     }
-    // Listen to changes
     _box.listenable().addListener(() {
       state = _box.values.toList();
     });
@@ -155,16 +166,15 @@ class PlaylistsNotifier extends StateNotifier<List<Playlist>> {
   }
 
   Future<void> deletePlaylist(Playlist playlist) async {
-    await playlist.delete(); // HiveObject method
+    await playlist.delete();
     state = _box.values.toList();
   }
 
   Future<void> addTrackToPlaylist(Playlist playlist, Track track) async {
-    // Avoid duplicates based on logic
     if (!playlist.tracks.any((t) => t == track)) {
       playlist.tracks.add(track);
       await playlist.save();
-      state = _box.values.toList(); // Trigger update
+      state = _box.values.toList();
     }
   }
 
@@ -176,7 +186,6 @@ class PlaylistsNotifier extends StateNotifier<List<Playlist>> {
 }
 
 // --- FILTERING LOGIC ---
-
 final availableErasProvider = Provider<List<String>>((ref) {
   final tracksAsync = ref.watch(tracksProvider);
   return tracksAsync.maybeWhen(
