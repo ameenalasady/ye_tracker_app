@@ -1,6 +1,8 @@
 import 'package:audio_service/audio_service.dart';
+import 'package:cached_network_image/cached_network_image.dart'; // IMPORT THIS
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../models/track.dart';
 import '../../providers/app_providers.dart';
 
 class PlayerScreen extends ConsumerStatefulWidget {
@@ -45,6 +47,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               const Color(0xFF121212).withValues(alpha: 0.9),
             ],
           ),
+          // Background blur image
+          image: (mediaItem.artUri != null)
+              ? DecorationImage(
+                  // CHANGED: CachedNetworkImageProvider
+                  image: CachedNetworkImageProvider(
+                    mediaItem.artUri.toString(),
+                    headers: Track.imageHeaders, // Fixes 403
+                  ),
+                  fit: BoxFit.cover,
+                  colorFilter: ColorFilter.mode(
+                    Colors.black.withValues(alpha: 0.8),
+                    BlendMode.darken
+                  ),
+                )
+              : null,
         ),
         child: SafeArea(
           child: Column(
@@ -92,18 +109,23 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         offset: const Offset(0, 20),
                       ),
                     ],
-                    image: (mediaItem.artUri != null)
-                        ? DecorationImage(
-                            image: NetworkImage(mediaItem.artUri.toString()),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
                   ),
-                  child: (mediaItem.artUri == null)
-                      ? const Center(
-                          child: Icon(Icons.music_note_rounded, size: 120, color: Colors.white12),
+                  child: (mediaItem.artUri != null)
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          // CHANGED: CachedNetworkImage
+                          child: CachedNetworkImage(
+                            imageUrl: mediaItem.artUri.toString(),
+                            httpHeaders: Track.imageHeaders, // Fixes 403
+                            fit: BoxFit.cover,
+                            errorWidget: (ctx, _, __) => const Center(
+                              child: Icon(Icons.music_note_rounded, size: 120, color: Colors.white12),
+                            ),
+                          ),
                         )
-                      : null,
+                      : const Center(
+                          child: Icon(Icons.music_note_rounded, size: 120, color: Colors.white12),
+                        ),
                 ),
               ),
 

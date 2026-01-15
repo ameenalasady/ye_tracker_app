@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'dart:math';
 import 'package:audio_service/audio_service.dart';
+import 'package:cached_network_image/cached_network_image.dart'; // IMPORT THIS
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -147,16 +147,20 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
                   decoration: BoxDecoration(
                     color: isCurrentTrack ? activeBorderColor.withAlpha((0.15 * 255).toInt()) : Colors.white.withAlpha((0.05 * 255).toInt()),
                     borderRadius: BorderRadius.circular(12),
-                    image: t.albumArtUrl.isNotEmpty
-                        ? DecorationImage(
-                            image: NetworkImage(t.albumArtUrl),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
                   ),
-                  child: t.albumArtUrl.isEmpty
-                      ? Center(child: _buildLeadingIcon(isCurrentTrack, isPlaying, isBuffering))
-                      : null,
+                  child: t.albumArtUrl.isNotEmpty
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          // CHANGED: Use CachedNetworkImage
+                          child: CachedNetworkImage(
+                            imageUrl: t.albumArtUrl,
+                            httpHeaders: Track.imageHeaders, // IMPORTANT: Passes headers to cache manager
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Center(child: _buildLeadingIcon(isCurrentTrack, isPlaying, isBuffering)),
+                            errorWidget: (context, url, error) => Center(child: _buildLeadingIcon(isCurrentTrack, isPlaying, isBuffering)),
+                          ),
+                        )
+                      : Center(child: _buildLeadingIcon(isCurrentTrack, isPlaying, isBuffering)),
                 ),
                 // Overlay playing animation on top of image if playing
                 if (t.albumArtUrl.isNotEmpty && (isBuffering || (isCurrentTrack && isPlaying)))
@@ -201,7 +205,6 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
                 ],
               ),
             ),
-            // Updated trailing action builder
             _buildTrailingAction(hasLink, isDownloaded, isProcessingDownload),
           ],
         ),
@@ -251,11 +254,7 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     );
   }
 
-  // FIXED: Modified to ensure consistent alignment and size
   Widget _buildTrailingAction(bool hasLink, bool isDownloaded, bool isDownloading) {
-    // We define a fixed box size for the trailing action.
-    // This ensures that whether it's a download button, a spinner, or a checkmark,
-    // they all occupy the exact same 40x40 space, keeping the list perfectly aligned.
     const double boxSize = 40.0;
 
     if (isDownloading) {
@@ -291,7 +290,6 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
           color: Colors.white.withAlpha((0.05 * 255).toInt()),
         ),
         child: IconButton(
-          // Removing default padding and constraints ensures exact centering
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
           icon: const Icon(Icons.download_rounded, color: Colors.white38, size: 20),
@@ -300,8 +298,6 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
       );
     }
 
-    // Return an empty box of the same size to maintain layout consistency
-    // even if there is no link (prevents text from jumping width)
     return const SizedBox(width: boxSize, height: boxSize);
   }
 }

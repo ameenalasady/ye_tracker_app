@@ -18,7 +18,12 @@ class TrackerParser {
   }
 
   Future<List<SheetTab>> fetchTabs() async {
-    final response = await http.get(Uri.parse(_baseUrl)).timeout(const Duration(seconds: 15));
+    // PASS HEADERS HERE
+    final response = await http.get(
+      Uri.parse(_baseUrl),
+      headers: Track.imageHeaders,
+    ).timeout(const Duration(seconds: 15));
+
     if (response.statusCode != 200) throw Exception("Failed to load source: ${response.statusCode}");
 
     final tabList = <SheetTab>[];
@@ -44,7 +49,12 @@ class TrackerParser {
     final url = '$_baseUrl/htmlview/sheet?headers=true&gid=$gid';
     debugPrint("Fetching: $url");
 
-    final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 20));
+    // PASS HEADERS HERE
+    final response = await http.get(
+      Uri.parse(url),
+      headers: Track.imageHeaders,
+    ).timeout(const Duration(seconds: 20));
+
     if (response.statusCode != 200) throw Exception("Failed to load Tab HTML");
 
     return await Isolate.run(() => _parseHtml(response.body));
@@ -95,7 +105,7 @@ List<Track> _parseHtml(String htmlBody) {
 
   final List<Track> tracks = [];
   String lastEra = "";
-  String lastEraImage = ""; // Variable to hold the current Era's artwork
+  String lastEraImage = "";
   final regExpGoogle = RegExp(r'[?&]q=([^&]+)');
 
   final idxName = colMap['name']!;
@@ -112,12 +122,10 @@ List<Track> _parseHtml(String htmlBody) {
     final cells = rows[i].children;
 
     // --- Image Detection (Era Headers) ---
-    // We check the whole row for images before checking if it's a track
     final imgs = rows[i].querySelectorAll('img');
     if (imgs.isNotEmpty) {
       for (var img in imgs) {
         final src = img.attributes['src'];
-        // Google sheets images usually come from googleusercontent or similar
         if (src != null && src.isNotEmpty) {
           lastEraImage = src;
         }
@@ -142,7 +150,6 @@ List<Track> _parseHtml(String htmlBody) {
       }
     }
 
-    // If it's not a valid track (no length AND no link), skip it
     if (len.isEmpty && (lnk.isEmpty || !lnk.contains('http'))) continue;
 
     String era = "";
@@ -194,7 +201,7 @@ List<Track> _parseHtml(String htmlBody) {
         type: (idxType > -1 && idxType < cells.length) ? cells[idxType].text.trim() : "",
         isStreaming: streaming,
         link: lnk,
-        albumArtUrl: lastEraImage, // Assign the detected image
+        albumArtUrl: lastEraImage,
       ),
     );
   }

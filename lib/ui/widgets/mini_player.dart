@@ -1,6 +1,8 @@
 import 'package:audio_service/audio_service.dart';
+import 'package:cached_network_image/cached_network_image.dart'; // IMPORT THIS
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../models/track.dart';
 import '../../providers/app_providers.dart';
 import '../screens/player_screen.dart';
 
@@ -26,7 +28,7 @@ class MiniPlayer extends ConsumerWidget {
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) => const PlayerScreen(),
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              const begin = Offset(0.0, 1.0); // Slide up from bottom
+              const begin = Offset(0.0, 1.0);
               const end = Offset.zero;
               const curve = Curves.easeOutQuart;
 
@@ -37,7 +39,7 @@ class MiniPlayer extends ConsumerWidget {
                 child: child,
               );
             },
-            opaque: false, // Keeps the animation smooth over the previous screen
+            opaque: false,
           ),
         );
       },
@@ -65,7 +67,7 @@ class MiniPlayer extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    // Album Art / Icon (Wrapped in Hero for animation)
+                    // Album Art
                     Hero(
                       tag: 'album_art',
                       child: Container(
@@ -74,18 +76,23 @@ class MiniPlayer extends ConsumerWidget {
                         decoration: BoxDecoration(
                           color: const Color(0xFF1A1A1A),
                           borderRadius: BorderRadius.circular(10),
-                          image: (mediaItem.artUri != null)
-                              ? DecorationImage(
-                                  image: NetworkImage(mediaItem.artUri.toString()),
-                                  fit: BoxFit.cover,
-                                )
-                              : null,
                         ),
-                        child: (mediaItem.artUri == null)
-                            ? const Center(
-                                child: Icon(Icons.music_note_rounded, color: Colors.white54),
+                        child: (mediaItem.artUri != null)
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                // CHANGED: CachedNetworkImage
+                                child: CachedNetworkImage(
+                                  imageUrl: mediaItem.artUri.toString(),
+                                  httpHeaders: Track.imageHeaders, // Fixes 403
+                                  fit: BoxFit.cover,
+                                  errorWidget: (ctx, _, __) => const Center(
+                                    child: Icon(Icons.music_note_rounded, color: Colors.white54),
+                                  ),
+                                ),
                               )
-                            : null,
+                            : const Center(
+                                child: Icon(Icons.music_note_rounded, color: Colors.white54),
+                              ),
                       ),
                     ),
                     const SizedBox(width: 12),

@@ -23,10 +23,16 @@ class Track extends HiveObject {
   @HiveField(9)
   String localPath;
   @HiveField(10)
-  final String albumArtUrl; // Added field
+  final String albumArtUrl;
 
   // Cached lowercased string for O(1) access during search filtering
   String? _searchIndex;
+
+  // --- NEW: Standard Headers to spoof a browser ---
+  static const Map<String, String> imageHeaders = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+    'Referer': 'https://docs.google.com/',
+  };
 
   Track({
     required this.era,
@@ -97,7 +103,7 @@ class TrackAdapter extends TypeAdapter<Track> {
       isStreaming: reader.read(),
       link: reader.read(),
       localPath: reader.read(),
-      albumArtUrl: reader.read(), // Read new field
+      albumArtUrl: reader.read(),
     );
   }
 
@@ -113,6 +119,6 @@ class TrackAdapter extends TypeAdapter<Track> {
     writer.write(obj.isStreaming);
     writer.write(obj.link);
     writer.write(obj.localPath);
-    writer.write(obj.albumArtUrl); // Write new field
+    writer.write(obj.albumArtUrl);
   }
 }
