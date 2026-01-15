@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive/hive.dart';
 import '../../models/track.dart';
 import '../../models/playlist.dart';
 import '../../providers/app_providers.dart';
@@ -33,16 +32,23 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   Future<void> _refresh() async {
     setState(() => _isRefreshing = true);
+
+    // Aesthetic delay
     await Future.delayed(const Duration(milliseconds: 500));
 
-    if (ref.read(selectedTabProvider) != null) {
-      final tab = ref.read(selectedTabProvider)!;
-      final boxName = 'tracks_${tab.gid}';
-      if (Hive.isBoxOpen(boxName)) await Hive.box<Track>(boxName).clear();
+    final selectedTab = ref.read(selectedTabProvider);
+
+    if (selectedTab != null) {
+      // 1. Tell Repository to clear the local cache for this tab
+      await ref.read(tracksRepositoryProvider).clearLocalCache(selectedTab);
+      // 2. Invalidate provider to trigger re-read (which will now fetch from network)
       ref.invalidate(tracksProvider);
     } else {
+      // If no tab selected, refresh the tabs list
       ref.invalidate(tabsProvider);
     }
+
+    // Always refresh cache size calculation
     ref.invalidate(cacheSizeProvider);
 
     if (mounted) setState(() => _isRefreshing = false);
@@ -145,6 +151,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
               tabsAsync.when(
                 data: (tabs) {
                   if (selectedTab == null && tabs.isNotEmpty) {
+                    // Set initial tab without rebuilding instantly
                     Future.microtask(() => ref.read(selectedTabProvider.notifier).state = tabs.first);
                     return const SizedBox(height: 40);
                   }
@@ -210,7 +217,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     );
   }
 
-  // Helper methods for sheets (Playlists, Filter, Settings) remain unchanged
   void _showPlaylistsSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,

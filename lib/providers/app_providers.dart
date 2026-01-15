@@ -5,15 +5,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
+
 import '../models/playlist.dart';
 import '../models/sheet_tab.dart';
 import '../models/track.dart';
-import '../services/tracker_parser.dart';
+import '../repositories/tracks_repository.dart'; // Import Repository
 import '../services/audio_handler.dart';
-import '../services/download_manager.dart'; // Import New Service
+import '../services/download_manager.dart';
 
 final sourceUrlProvider = StateProvider<String>((ref) => "yetracker.net");
 final searchQueryProvider = StateProvider<String>((ref) => "");
+
+// --- REPOSITORY PROVIDER ---
+final tracksRepositoryProvider = Provider<TracksRepository>((ref) {
+  final sourceUrl = ref.watch(sourceUrlProvider);
+  return TracksRepository(sourceUrl: sourceUrl);
+});
 
 // --- SORTING & FILTERING ---
 enum SortOption { defaultOrder, newest, oldest, nameAz, nameZa, shortest, longest }
@@ -27,6 +34,7 @@ final autoDownloadProvider = StateProvider<bool>((ref) {
 });
 
 final cacheSizeProvider = FutureProvider<String>((ref) async {
+  // Watch tabs to recalculate when tabs change/refresh
   ref.watch(tabsProvider);
   final dir = await getApplicationDocumentsDirectory();
   try {
@@ -44,29 +52,20 @@ final cacheSizeProvider = FutureProvider<String>((ref) async {
   }
 });
 
-// --- NEW: DOWNLOAD MANAGER PROVIDER ---
-// This will be overridden in main.dart with the instance created there
+// --- DOWNLOAD MANAGER ---
 final downloadManagerProvider = Provider<DownloadManager>((ref) {
   throw UnimplementedError("Initialize in main.dart");
 });
 
-// Updated: Watch the DownloadManager instead of AudioHandler
 final activeDownloadsProvider = StreamProvider<Set<String>>((ref) {
   final manager = ref.watch(downloadManagerProvider);
   return Stream.multi((controller) {
     void listener() {
-      if (!controller.isClosed) {
-        controller.add(manager.value);
-      }
+      if (!controller.isClosed) controller.add(manager.value);
     }
-    // Emit initial value
     controller.add(manager.value);
-    // Listen for changes
     manager.addListener(listener);
-
-    controller.onCancel = () {
-      manager.removeListener(listener);
-    };
+    controller.onCancel = () => manager.removeListener(listener);
   });
 });
 
@@ -99,11 +98,11 @@ final repeatModeProvider = StreamProvider<AudioServiceRepeatMode>((ref) {
       .distinct();
 });
 
-// --- DATA FETCHING (Unchanged) ---
+// --- DATA FETCHING (REFACTORED) ---
+
 final tabsProvider = FutureProvider<List<SheetTab>>((ref) async {
-  final source = ref.watch(sourceUrlProvider);
-  final parser = TrackerParser(source);
-  return await parser.fetchTabs();
+  final repository = ref.watch(tracksRepositoryProvider);
+  return await repository.fetchTabs();
 });
 
 final selectedTabProvider = StateProvider<SheetTab?>((ref) => null);
@@ -112,39 +111,11 @@ final tracksProvider = FutureProvider<List<Track>>((ref) async {
   final tab = ref.watch(selectedTabProvider);
   if (tab == null) return [];
 
-  final boxName = 'tracks_${tab.gid}';
-  Box<Track> box;
-  if (Hive.isBoxOpen(boxName)) {
-    box = Hive.box<Track>(boxName);
-  } else {
-    try {
-      box = await Hive.openBox<Track>(boxName);
-    } catch (e) {
-      await Hive.deleteBoxFromDisk(boxName);
-      box = await Hive.openBox<Track>(boxName);
-    }
-  }
-
-  if (box.isNotEmpty) {
-    return box.values.toList();
-  }
-
-  try {
-    final source = ref.read(sourceUrlProvider);
-    final parser = TrackerParser(source);
-    final tracks = await parser.fetchTracksForTab(tab.gid);
-
-    await box.clear();
-    await box.addAll(tracks);
-
-    return tracks;
-  } catch (e) {
-    if (box.isNotEmpty) return box.values.toList();
-    rethrow;
-  }
+  final repository = ref.watch(tracksRepositoryProvider);
+  return await repository.getTracksForTab(tab);
 });
 
-// --- PLAYLISTS PROVIDER (Unchanged) ---
+// --- PLAYLISTS PROVIDER ---
 final playlistsProvider = StateNotifierProvider<PlaylistsNotifier, List<Playlist>>((ref) {
   return PlaylistsNotifier();
 });
@@ -171,36 +142,37 @@ class PlaylistsNotifier extends StateNotifier<List<Playlist>> {
   Future<void> createPlaylist(String name) async {
     final newPlaylist = Playlist(name: name, tracks: []);
     await _box.add(newPlaylist);
-    state = _box.values.toList();
+    // State updates automatically via listener
   }
 
   Future<void> deletePlaylist(Playlist playlist) async {
     await playlist.delete();
-    state = _box.values.toList();
   }
 
   Future<void> addTrackToPlaylist(Playlist playlist, Track track) async {
+    // Only add if not already present
     if (!playlist.tracks.any((t) => t == track)) {
       playlist.tracks.add(track);
       await playlist.save();
-      state = _box.values.toList();
     }
   }
 
   Future<void> removeTrackFromPlaylist(Playlist playlist, Track track) async {
     playlist.tracks.removeWhere((t) => t == track);
     await playlist.save();
-    state = _box.values.toList();
   }
 }
 
-// --- FILTERING LOGIC (Unchanged) ---
+// --- FILTERING LOGIC ---
 final availableErasProvider = Provider<List<String>>((ref) {
   final tracksAsync = ref.watch(tracksProvider);
   return tracksAsync.maybeWhen(
     data: (tracks) {
-      final eras = tracks.map((t) => t.era.trim()).where((e) => e.isNotEmpty).toSet().toList();
-      return eras;
+      return tracks
+          .map((t) => t.era.trim())
+          .where((e) => e.isNotEmpty)
+          .toSet()
+          .toList();
     },
     orElse: () => [],
   );
@@ -223,6 +195,7 @@ final filteredTracksProvider = Provider<AsyncValue<List<Track>>>((ref) {
       result = result.where((t) => t.searchIndex.contains(query)).toList();
     }
 
+    // Create a copy to sort
     result = List.of(result);
 
     switch (sortOption) {
