@@ -130,8 +130,12 @@ final filteredTracksProvider = Provider<AsyncValue<List<Track>>>((ref) {
   final query = ref.watch(searchQueryProvider).trim().toLowerCase();
 
   return tracksAsync.whenData((tracks) {
-    if (query.isEmpty) return tracks;
-    return tracks.where((t) => t.searchIndex.contains(query)).toList();
+    // 1. Filter out tracks that do not have a duration (length)
+    final validTracks = tracks.where((t) => t.length.trim().isNotEmpty).toList();
+
+    // 2. Apply search filter
+    if (query.isEmpty) return validTracks;
+    return validTracks.where((t) => t.searchIndex.contains(query)).toList();
   });
 });
 

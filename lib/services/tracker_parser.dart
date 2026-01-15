@@ -138,8 +138,11 @@ List<Track> _parseHtml(String htmlBody) {
     if (rawName.isEmpty || rawName == "Name") { continue; }
 
     String len = (idxLength > -1 && idxLength < cells.length) ? cells[idxLength].text.trim() : "";
-    String lnk = "";
 
+    // CHANGED: Strictly skip if there is no duration/length
+    if (len.isEmpty) continue;
+
+    String lnk = "";
     if (idxLink > -1 && idxLink < cells.length) {
       final cell = cells[idxLink];
       final anchor = cell.querySelector('a');
@@ -149,8 +152,6 @@ List<Track> _parseHtml(String htmlBody) {
         lnk = cell.text.trim();
       }
     }
-
-    if (len.isEmpty && (lnk.isEmpty || !lnk.contains('http'))) continue;
 
     String era = "";
     if (idxEra > -1 && idxEra < cells.length) {
