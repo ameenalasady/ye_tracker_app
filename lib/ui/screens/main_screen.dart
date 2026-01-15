@@ -538,8 +538,8 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                   title: const Text("Auto-Download on Play", style: TextStyle(color: Colors.white)),
                   subtitle: const Text("Automatically save songs when you play them", style: TextStyle(color: Colors.grey, fontSize: 12)),
                   onChanged: (val) {
-                    ref.read(autoDownloadProvider.notifier).state = val;
-                    Hive.box('settings').put('auto_download', val);
+                    // NEW: Use the notifier to set value and save to Hive internally
+                    ref.read(autoDownloadProvider.notifier).set(val);
                   },
                 ),
                 Divider(height: 1, color: Colors.white.withValues(alpha: 0.05)),

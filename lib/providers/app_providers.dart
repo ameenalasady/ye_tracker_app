@@ -28,10 +28,26 @@ final sortOptionProvider = StateProvider<SortOption>((ref) => SortOption.default
 final selectedErasProvider = StateProvider<Set<String>>((ref) => {});
 
 // --- SETTINGS PROVIDERS ---
-final autoDownloadProvider = StateProvider<bool>((ref) {
-  final box = Hive.box('settings');
-  return box.get('auto_download', defaultValue: true);
+final autoDownloadProvider = StateNotifierProvider<AutoDownloadNotifier, bool>((ref) {
+  return AutoDownloadNotifier();
 });
+
+class AutoDownloadNotifier extends StateNotifier<bool> {
+  AutoDownloadNotifier() : super(true) {
+    _load();
+  }
+
+  void _load() {
+    // Box is opened in main.dart before app starts, so this is safe
+    final box = Hive.box('settings');
+    state = box.get('auto_download', defaultValue: true);
+  }
+
+  void set(bool value) {
+    state = value;
+    Hive.box('settings').put('auto_download', value);
+  }
+}
 
 final cacheSizeProvider = FutureProvider<String>((ref) async {
   // Watch tabs to recalculate when tabs change/refresh
