@@ -71,6 +71,24 @@ class Track extends HiveObject {
     return _searchIndex!;
   }
 
+  /// Helper to convert "MM:SS" string to integer seconds for correct sorting
+  int get durationInSeconds {
+    try {
+      if (!length.contains(':')) return 0;
+      final parts = length.split(':');
+      if (parts.length == 2) {
+        return (int.tryParse(parts[0]) ?? 0) * 60 + (int.tryParse(parts[1]) ?? 0);
+      } else if (parts.length == 3) {
+        return (int.tryParse(parts[0]) ?? 0) * 3600 +
+            (int.tryParse(parts[1]) ?? 0) * 60 +
+            (int.tryParse(parts[2]) ?? 0);
+      }
+      return 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
   /// Centralized logic to get the actual download/stream URL
   String get effectiveUrl {
     if (link.contains('pillows.su/f/')) {

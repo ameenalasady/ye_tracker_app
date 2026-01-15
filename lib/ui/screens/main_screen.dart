@@ -5,7 +5,7 @@ import '../../models/track.dart';
 import '../../providers/app_providers.dart';
 import '../widgets/mini_player.dart';
 import '../widgets/track_list.dart';
-import 'player_screen.dart'; // Import added
+import 'player_screen.dart';
 
 class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
@@ -42,7 +42,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     } else {
       ref.invalidate(tabsProvider);
     }
-    // Refresh cache size calculation
     ref.invalidate(cacheSizeProvider);
 
     if (mounted) setState(() => _isRefreshing = false);
@@ -53,12 +52,17 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     final tabsAsync = ref.watch(tabsProvider);
     final selectedTab = ref.watch(selectedTabProvider);
 
+    // Check if filters are active to show visual indicator
+    final activeEraCount = ref.watch(selectedErasProvider).length;
+    final isSortChanged = ref.watch(sortOptionProvider) != SortOption.defaultOrder;
+    final isFilterActive = activeEraCount > 0 || isSortChanged;
+
     return Scaffold(
       body: Stack(
         children: [
           Column(
             children: [
-              const SizedBox(height: 50), // Top spacing for status bar
+              const SizedBox(height: 50), // Top spacing
 
               // --- HEADER & SEARCH ---
               Padding(
@@ -80,6 +84,30 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                         ),
                         Row(
                           children: [
+                            // Filter Button
+                            Stack(
+                              children: [
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.filter_list_rounded,
+                                    color: isFilterActive ? const Color(0xFFFF5252) : Colors.white54
+                                  ),
+                                  onPressed: () => _showFilterSheet(context),
+                                ),
+                                if (isFilterActive)
+                                  Positioned(
+                                    right: 8,
+                                    top: 8,
+                                    child: Container(
+                                      width: 8, height: 8,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFFF5252),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
                             IconButton(
                               icon: _isRefreshing
                                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54))
@@ -96,7 +124,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Modern Search Bar
+                    // Search Bar
                     Container(
                       height: 50,
                       decoration: BoxDecoration(
@@ -155,6 +183,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                             ref.read(selectedTabProvider.notifier).state = tab;
                             _searchController.clear();
                             ref.read(searchQueryProvider.notifier).state = "";
+                            // Reset filters on tab change
+                            ref.read(selectedErasProvider.notifier).state = {};
+                            ref.read(sortOptionProvider.notifier).state = SortOption.defaultOrder;
                           },
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
@@ -205,7 +236,18 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     );
   }
 
-  // --- SETTINGS SHEET ---
+  void _showFilterSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E1E),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (ctx) => const FilterSheet(),
+    );
+  }
+
   void _showSettingsSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -219,6 +261,156 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   }
 }
 
+// --- FILTER & SORT SHEET ---
+class FilterSheet extends ConsumerWidget {
+  const FilterSheet({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentSort = ref.watch(sortOptionProvider);
+    final availableEras = ref.watch(availableErasProvider);
+    final selectedEras = ref.watch(selectedErasProvider);
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.4,
+      maxChildSize: 0.85,
+      expand: false,
+      builder: (_, scrollController) {
+        return Container(
+          decoration: const BoxDecoration(
+             color: Color(0xFF1E1E1E),
+             borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+          ),
+          child: ListView(
+            controller: scrollController,
+            padding: const EdgeInsets.all(24),
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text("Filter & Sort", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+                  TextButton(
+                    onPressed: () {
+                      ref.read(sortOptionProvider.notifier).state = SortOption.defaultOrder;
+                      ref.read(selectedErasProvider.notifier).state = {};
+                      Navigator.pop(context);
+                    },
+                    child: const Text("Reset", style: TextStyle(color: Color(0xFFFF5252))),
+                  )
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // --- SORT SECTION ---
+              const Text("Sort By", style: TextStyle(color: Color(0xFFFF5252), fontWeight: FontWeight.bold, fontSize: 13)),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _buildSortChip(ref, currentSort, SortOption.defaultOrder, "Default"),
+                  _buildSortChip(ref, currentSort, SortOption.newest, "Newest"),
+                  _buildSortChip(ref, currentSort, SortOption.oldest, "Oldest"),
+                  _buildSortChip(ref, currentSort, SortOption.nameAz, "Name (A-Z)"),
+                  _buildSortChip(ref, currentSort, SortOption.nameZa, "Name (Z-A)"),
+                  _buildSortChip(ref, currentSort, SortOption.shortest, "Shortest"),
+                  _buildSortChip(ref, currentSort, SortOption.longest, "Longest"),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+              const Divider(color: Colors.white10),
+              const SizedBox(height: 24),
+
+              // --- ERA FILTER SECTION ---
+              const Text("Filter Eras", style: TextStyle(color: Color(0xFFFF5252), fontWeight: FontWeight.bold, fontSize: 13)),
+              const SizedBox(height: 12),
+
+              availableEras.isEmpty
+              ? const Text("No eras found in this tab.", style: TextStyle(color: Colors.grey))
+              : Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                   // "All" Chip
+                   ChoiceChip(
+                     label: const Text("All Eras"),
+                     selected: selectedEras.isEmpty,
+                     onSelected: (selected) {
+                       if (selected) ref.read(selectedErasProvider.notifier).state = {};
+                     },
+                     backgroundColor: const Color(0xFF2A2A2A),
+                     selectedColor: const Color(0xFFFF5252),
+                     labelStyle: TextStyle(
+                        color: selectedEras.isEmpty ? Colors.white : Colors.white,
+                        fontWeight: FontWeight.w500,
+                     ),
+                     side: BorderSide.none,
+                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                   ),
+                   // Era Chips
+                   ...availableEras.map((era) {
+                     final isSelected = selectedEras.contains(era);
+                     return FilterChip(
+                       label: Text(era),
+                       selected: isSelected,
+                       onSelected: (bool selected) {
+                         final current = Set<String>.from(ref.read(selectedErasProvider));
+                         if (selected) {
+                           current.add(era);
+                         } else {
+                           current.remove(era);
+                         }
+                         ref.read(selectedErasProvider.notifier).state = current;
+                       },
+                       backgroundColor: const Color(0xFF2A2A2A),
+                       selectedColor: const Color(0xFFFF5252).withValues(alpha: 0.6),
+                       checkmarkColor: Colors.white,
+                       labelStyle: const TextStyle(color: Colors.white70),
+                       side: BorderSide.none,
+                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                     );
+                   }),
+                ],
+              ),
+              const SizedBox(height: 40),
+            ],
+          ),
+        );
+      }
+    );
+  }
+
+  Widget _buildSortChip(WidgetRef ref, SortOption current, SortOption value, String label) {
+    final isSelected = current == value;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (selected) {
+        if (selected) ref.read(sortOptionProvider.notifier).state = value;
+      },
+      backgroundColor: const Color(0xFF2A2A2A),
+      selectedColor: const Color(0xFFFF5252),
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : Colors.white70,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.w400,
+      ),
+      side: BorderSide.none,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    );
+  }
+}
+
+// --- SETTINGS SHEET ---
 class SettingsSheet extends ConsumerStatefulWidget {
   const SettingsSheet({super.key});
 
@@ -351,7 +543,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
           ),
 
           const SizedBox(height: 12),
-          const Center(child: Text("v1.0.0 • Ye Tracker", style: TextStyle(color: Colors.white24, fontSize: 12))),
+          const Center(child: Text("v1.1.0 • Ye Tracker", style: TextStyle(color: Colors.white24, fontSize: 12))),
         ],
       ),
     );

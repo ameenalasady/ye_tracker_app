@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'dart:async'; // Added for Stream
+import 'dart:async';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
@@ -11,6 +11,15 @@ import '../services/audio_handler.dart';
 
 final sourceUrlProvider = StateProvider<String>((ref) => "yetracker.net");
 final searchQueryProvider = StateProvider<String>((ref) => "");
+
+// --- SORTING & FILTERING ---
+
+enum SortOption { defaultOrder, newest, oldest, nameAz, nameZa, shortest, longest }
+
+final sortOptionProvider = StateProvider<SortOption>((ref) => SortOption.defaultOrder);
+
+// Stores which Eras are currently selected. If empty, it assumes "All Eras".
+final selectedErasProvider = StateProvider<Set<String>>((ref) => {});
 
 // --- SETTINGS PROVIDERS ---
 
@@ -54,7 +63,6 @@ final currentMediaItemProvider = StreamProvider<MediaItem?>((ref) {
   return ref.watch(audioHandlerProvider).mediaItem;
 });
 
-// FIXED: Manually bridge ValueNotifier to Stream
 final activeDownloadsProvider = StreamProvider<Set<String>>((ref) {
   final handler = ref.watch(audioHandlerProvider);
 
@@ -64,14 +72,8 @@ final activeDownloadsProvider = StreamProvider<Set<String>>((ref) {
         controller.add(handler.downloadingTracks.value);
       }
     }
-
-    // Add initial value
     controller.add(handler.downloadingTracks.value);
-
-    // Listen to changes
     handler.downloadingTracks.addListener(listener);
-
-    // Cleanup when stream is cancelled
     controller.onCancel = () {
       handler.downloadingTracks.removeListener(listener);
     };
@@ -125,17 +127,75 @@ final tracksProvider = FutureProvider<List<Track>>((ref) async {
   }
 });
 
+// --- FILTERING LOGIC ---
+
+// Returns a unique list of Eras present in the current loaded tab
+final availableErasProvider = Provider<List<String>>((ref) {
+  final tracksAsync = ref.watch(tracksProvider);
+  return tracksAsync.maybeWhen(
+    data: (tracks) {
+      // Extract unique non-empty eras
+      final eras = tracks.map((t) => t.era.trim()).where((e) => e.isNotEmpty).toSet().toList();
+      // Keep them in order of appearance (which usually matches the spreadsheet chronology)
+      // or sort them if you prefer alphabetical
+      return eras;
+    },
+    orElse: () => [],
+  );
+});
+
 final filteredTracksProvider = Provider<AsyncValue<List<Track>>>((ref) {
   final tracksAsync = ref.watch(tracksProvider);
   final query = ref.watch(searchQueryProvider).trim().toLowerCase();
+  final sortOption = ref.watch(sortOptionProvider);
+  final selectedEras = ref.watch(selectedErasProvider);
 
   return tracksAsync.whenData((tracks) {
-    // 1. Filter out tracks that do not have a duration (length)
-    final validTracks = tracks.where((t) => t.length.trim().isNotEmpty).toList();
+    // 1. Basic Validity Filter (Must have length)
+    var result = tracks.where((t) => t.length.trim().isNotEmpty).toList();
 
-    // 2. Apply search filter
-    if (query.isEmpty) return validTracks;
-    return validTracks.where((t) => t.searchIndex.contains(query)).toList();
+    // 2. Era Filtering
+    if (selectedEras.isNotEmpty) {
+      result = result.where((t) => selectedEras.contains(t.era.trim())).toList();
+    }
+
+    // 3. Search Filtering
+    if (query.isNotEmpty) {
+      result = result.where((t) => t.searchIndex.contains(query)).toList();
+    }
+
+    // 4. Sorting
+    // We create a copy to sort so we don't mutate the original cached list order
+    result = List.of(result);
+
+    switch (sortOption) {
+      case SortOption.newest:
+        // Attempt string sort on ISO dates or similar.
+        // Fallback: Use list order if no date, or assume bottom of list is newer if data is chronological
+        result.sort((a, b) => b.releaseDate.compareTo(a.releaseDate));
+        break;
+      case SortOption.oldest:
+        result.sort((a, b) => a.releaseDate.compareTo(b.releaseDate));
+        break;
+      case SortOption.nameAz:
+        result.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+        break;
+      case SortOption.nameZa:
+        result.sort((a, b) => b.title.toLowerCase().compareTo(a.title.toLowerCase()));
+        break;
+      case SortOption.shortest:
+        result.sort((a, b) => a.durationInSeconds.compareTo(b.durationInSeconds));
+        break;
+      case SortOption.longest:
+        result.sort((a, b) => b.durationInSeconds.compareTo(a.durationInSeconds));
+        break;
+      case SortOption.defaultOrder:
+      default:
+        // Do nothing, keep spreadsheet order
+        break;
+    }
+
+    return result;
   });
 });
 
@@ -153,7 +213,5 @@ class CacheManager {
         } catch (_) {}
       }
     }
-
-    // Clear known boxes logic here if needed
   }
 }
