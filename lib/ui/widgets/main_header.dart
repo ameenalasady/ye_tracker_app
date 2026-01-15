@@ -24,16 +24,19 @@ class MainHeader extends ConsumerStatefulWidget {
 
 class _MainHeaderState extends ConsumerState<MainHeader> {
   late final TextEditingController _searchController;
+  late final FocusNode _searchFocusNode; // Added explicit FocusNode
 
   @override
   void initState() {
     super.initState();
     _searchController = TextEditingController();
+    _searchFocusNode = FocusNode(); // Initialize FocusNode
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocusNode.dispose(); // Dispose FocusNode
     super.dispose();
   }
 
@@ -126,6 +129,7 @@ class _MainHeaderState extends ConsumerState<MainHeader> {
             ),
             child: TextField(
               controller: _searchController,
+              focusNode: _searchFocusNode, // Attach FocusNode
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: "Search tracks...",
@@ -136,6 +140,7 @@ class _MainHeaderState extends ConsumerState<MainHeader> {
                         icon: const Icon(Icons.close_rounded, size: 18, color: Colors.white54),
                         onPressed: () {
                           _searchController.clear();
+                          _searchFocusNode.unfocus(); // Unfocus on clear
                           ref.read(searchQueryProvider.notifier).state = "";
                         },
                       )

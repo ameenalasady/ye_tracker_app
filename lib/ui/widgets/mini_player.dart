@@ -1,5 +1,5 @@
 import 'package:audio_service/audio_service.dart';
-import 'package:cached_network_image/cached_network_image.dart'; // IMPORT THIS
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/track.dart';
@@ -24,6 +24,10 @@ class MiniPlayer extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () {
+        // FIX: Explicitly unfocus any active text fields (like search)
+        // before pushing the new route. This prevents keyboard popping up on return.
+        FocusScope.of(context).unfocus();
+
         Navigator.of(context).push(
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) => const PlayerScreen(),
@@ -80,10 +84,9 @@ class MiniPlayer extends ConsumerWidget {
                         child: (mediaItem.artUri != null)
                             ? ClipRRect(
                                 borderRadius: BorderRadius.circular(10),
-                                // CHANGED: CachedNetworkImage
                                 child: CachedNetworkImage(
                                   imageUrl: mediaItem.artUri.toString(),
-                                  httpHeaders: Track.imageHeaders, // Fixes 403
+                                  httpHeaders: Track.imageHeaders,
                                   fit: BoxFit.cover,
                                   errorWidget: (ctx, _, __) => const Center(
                                     child: Icon(Icons.music_note_rounded, color: Colors.white54),

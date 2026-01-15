@@ -234,8 +234,7 @@ final filteredTracksProvider = Provider<AsyncValue<List<Track>>>((ref) {
         result.sort((a, b) => b.durationInSeconds.compareTo(a.durationInSeconds));
         break;
       case SortOption.defaultOrder:
-      default:
-        break;
+      break;
     }
 
     return result;

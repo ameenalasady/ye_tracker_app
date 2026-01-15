@@ -31,6 +31,8 @@ class TrackList extends ConsumerWidget {
         return ListView.builder(
           itemCount: tracks.length,
           cacheExtent: 1000,
+          // FIX: Dismiss keyboard when user drags the list
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.only(top: 8, bottom: 120), // Bottom padding for MiniPlayer
           itemBuilder: (context, index) => TrackTile(track: tracks[index]),
         );
