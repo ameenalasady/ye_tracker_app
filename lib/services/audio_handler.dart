@@ -1,21 +1,19 @@
 import 'dart:io';
 import 'package:audio_service/audio_service.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:path_provider/path_provider.dart';
 import '../models/track.dart';
+import 'download_manager.dart'; // Import
 
 class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final _player = AudioPlayer();
-  final _dio = Dio();
+  final DownloadManager downloadManager; // Dependency Injection
 
   ConcatenatingAudioSource? _playlist;
 
-  final ValueNotifier<Set<String>> downloadingTracks = ValueNotifier({});
-
-  MyAudioHandler() {
+  // Constructor accepts DownloadManager
+  MyAudioHandler(this.downloadManager) {
     _loadEmptyPlaylist();
     _notifyAudioHandlerAboutPlaybackEvents();
     _listenToPlaybackState();
@@ -71,20 +69,20 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   }
 
   void _listenToPlaybackState() {
-    // FIX: Accessing tag requires casting to UriAudioSource (or IndexedAudioSource)
     _player.currentIndexStream.listen((index) {
       if (index != null && _playlist != null && index < _playlist!.length) {
-        // CAST ADDED HERE
         final source = _playlist!.children[index] as UriAudioSource;
         final item = source.tag as MediaItem;
 
         mediaItem.add(item);
 
+        // Auto Download Logic delegated to DownloadManager
         final track = item.extras?['track_obj'] as Track?;
         if (track != null) {
           final autoDownload = Hive.box('settings').get('auto_download', defaultValue: true);
           if (autoDownload) {
-             _cacheTrack(track);
+             // We don't need a callback here, just fire and forget
+             downloadManager.downloadTrack(track);
           }
         }
       }
@@ -97,16 +95,12 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       }
     });
 
-    // Sync Sequence to Queue
-    // sequenceState.effectiveSequence returns List<IndexedAudioSource> which HAS tag.
     _player.sequenceStateStream.listen((sequenceState) {
       if (sequenceState == null) return;
-
       final sequence = sequenceState.effectiveSequence;
       final newQueue = sequence.map((source) {
         return source.tag as MediaItem;
       }).toList();
-
       queue.add(newQueue);
     });
   }
@@ -133,11 +127,8 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   Future<void> skipToQueueItem(int index) async {
     if (index >= 0 && index < queue.value.length) {
       final targetItem = queue.value[index];
-
       if (_playlist != null) {
-        // CAST ADDED HERE inside the predicate
         final rawIndex = _playlist!.children.indexWhere((s) => (s as UriAudioSource).tag == targetItem);
-
         if (rawIndex != -1) {
           _player.seek(Duration.zero, index: rawIndex);
           mediaItem.add(targetItem);
@@ -185,7 +176,6 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   Future<void> removeQueueItemAt(int index) async {
     if (_playlist != null && index < queue.value.length) {
       final targetItem = queue.value[index];
-      // CAST ADDED HERE inside the predicate
       final rawIndex = _playlist!.children.indexWhere((s) => (s as UriAudioSource).tag == targetItem);
       if (rawIndex != -1) {
         await _playlist!.removeAt(rawIndex);
@@ -194,7 +184,6 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   }
 
   Future<void> moveQueueItem(int oldIndex, int newIndex) async {
-    // Disable reordering while shuffled as it's complex to map back to raw list
     if (!_player.shuffleModeEnabled) {
       if (oldIndex < newIndex) {
         newIndex -= 1;
@@ -205,7 +194,6 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   Future<void> playPlaylist(List<Track> tracks, int initialIndex) async {
     if (tracks.isEmpty) return;
-
     final items = tracks.map((track) => _createMediaItem(track)).toList();
 
     queue.add(items);
@@ -268,39 +256,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     );
   }
 
-  Future<void> _cacheTrack(Track track) async {
-    if (track.localPath.isNotEmpty && File(track.localPath).existsSync()) return;
-    if (downloadingTracks.value.contains(track.effectiveUrl)) return;
-
-    try {
-      downloadingTracks.value = {...downloadingTracks.value, track.effectiveUrl};
-      final dir = await getApplicationDocumentsDirectory();
-      final safeName = track.displayName.replaceAll(RegExp(r'[^\w\s\.-]'), '').trim();
-      final savePath = '${dir.path}/$safeName.mp3';
-
-      await _dio.download(
-        track.effectiveUrl,
-        savePath,
-        options: Options(receiveTimeout: const Duration(minutes: 10)),
-      );
-
-      if (File(savePath).existsSync()) {
-        track.localPath = savePath;
-        if (track.isInBox) {
-          await track.save();
-        }
-      }
-    } catch (e) {
-      debugPrint("Background cache failed: $e");
-    } finally {
-      final set = Set<String>.from(downloadingTracks.value);
-      set.remove(track.effectiveUrl);
-      downloadingTracks.value = set;
-    }
-  }
-
   Future<void> dispose() async {
     await _player.dispose();
-    downloadingTracks.dispose();
   }
 }

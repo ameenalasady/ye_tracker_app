@@ -10,6 +10,7 @@ import '../models/sheet_tab.dart';
 import '../models/track.dart';
 import '../services/tracker_parser.dart';
 import '../services/audio_handler.dart';
+import '../services/download_manager.dart'; // Import New Service
 
 final sourceUrlProvider = StateProvider<String>((ref) => "yetracker.net");
 final searchQueryProvider = StateProvider<String>((ref) => "");
@@ -43,6 +44,32 @@ final cacheSizeProvider = FutureProvider<String>((ref) async {
   }
 });
 
+// --- NEW: DOWNLOAD MANAGER PROVIDER ---
+// This will be overridden in main.dart with the instance created there
+final downloadManagerProvider = Provider<DownloadManager>((ref) {
+  throw UnimplementedError("Initialize in main.dart");
+});
+
+// Updated: Watch the DownloadManager instead of AudioHandler
+final activeDownloadsProvider = StreamProvider<Set<String>>((ref) {
+  final manager = ref.watch(downloadManagerProvider);
+  return Stream.multi((controller) {
+    void listener() {
+      if (!controller.isClosed) {
+        controller.add(manager.value);
+      }
+    }
+    // Emit initial value
+    controller.add(manager.value);
+    // Listen for changes
+    manager.addListener(listener);
+
+    controller.onCancel = () {
+      manager.removeListener(listener);
+    };
+  });
+});
+
 // --- AUDIO HANDLER ---
 final audioHandlerProvider = Provider<MyAudioHandler>((ref) {
   throw UnimplementedError("Initialize in main.dart");
@@ -56,12 +83,10 @@ final currentMediaItemProvider = StreamProvider<MediaItem?>((ref) {
   return ref.watch(audioHandlerProvider).mediaItem;
 });
 
-// --- NEW: Queue Provider ---
 final queueProvider = StreamProvider<List<MediaItem>>((ref) {
   return ref.watch(audioHandlerProvider).queue;
 });
 
-// --- NEW: Shuffle/Repeat Providers (Convenience) ---
 final shuffleModeProvider = StreamProvider<AudioServiceShuffleMode>((ref) {
   return ref.watch(audioHandlerProvider).playbackState
       .map((state) => state.shuffleMode)
@@ -74,23 +99,7 @@ final repeatModeProvider = StreamProvider<AudioServiceRepeatMode>((ref) {
       .distinct();
 });
 
-final activeDownloadsProvider = StreamProvider<Set<String>>((ref) {
-  final handler = ref.watch(audioHandlerProvider);
-  return Stream.multi((controller) {
-    void listener() {
-      if (!controller.isClosed) {
-        controller.add(handler.downloadingTracks.value);
-      }
-    }
-    controller.add(handler.downloadingTracks.value);
-    handler.downloadingTracks.addListener(listener);
-    controller.onCancel = () {
-      handler.downloadingTracks.removeListener(listener);
-    };
-  });
-});
-
-// --- DATA FETCHING ---
+// --- DATA FETCHING (Unchanged) ---
 final tabsProvider = FutureProvider<List<SheetTab>>((ref) async {
   final source = ref.watch(sourceUrlProvider);
   final parser = TrackerParser(source);
@@ -135,7 +144,7 @@ final tracksProvider = FutureProvider<List<Track>>((ref) async {
   }
 });
 
-// --- PLAYLISTS PROVIDER ---
+// --- PLAYLISTS PROVIDER (Unchanged) ---
 final playlistsProvider = StateNotifierProvider<PlaylistsNotifier, List<Playlist>>((ref) {
   return PlaylistsNotifier();
 });
@@ -185,7 +194,7 @@ class PlaylistsNotifier extends StateNotifier<List<Playlist>> {
   }
 }
 
-// --- FILTERING LOGIC ---
+// --- FILTERING LOGIC (Unchanged) ---
 final availableErasProvider = Provider<List<String>>((ref) {
   final tracksAsync = ref.watch(tracksProvider);
   return tracksAsync.maybeWhen(

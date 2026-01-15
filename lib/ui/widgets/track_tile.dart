@@ -2,12 +2,9 @@ import 'dart:io';
 import 'dart:math';
 import 'package:audio_service/audio_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../../models/track.dart';
 import '../../providers/app_providers.dart';
 
@@ -22,7 +19,6 @@ class TrackTile extends ConsumerStatefulWidget {
 }
 
 class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProviderStateMixin {
-  bool _manualDownloading = false;
   late AnimationController _animController;
 
   @override
@@ -40,36 +36,19 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     super.dispose();
   }
 
-  Future<void> _manualDownload(Track track) async {
-    if (Platform.isAndroid) {
-      if (await Permission.storage.request().isGranted == false) {}
-    }
-
-    if (!mounted) return;
-    setState(() => _manualDownloading = true);
-
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final safeName = track.displayName.replaceAll(RegExp(r'[^\w\s\.-]'), '').trim();
-      final savePath = '${dir.path}/$safeName.mp3';
-
-      await Dio().download(
-        track.effectiveUrl,
-        savePath,
-        options: Options(receiveTimeout: const Duration(minutes: 5)),
-      );
-
-      track.localPath = savePath;
-      if (track.isInBox) {
-        await track.save();
+  void _manualDownload(Track track) {
+    final manager = ref.read(downloadManagerProvider);
+    manager.downloadTrack(
+      track,
+      onError: (msg) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+        }
+      },
+      onSuccess: () {
+        // Optional: Show success msg
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Download Failed")));
-      }
-    } finally {
-      if (mounted) setState(() => _manualDownloading = false);
-    }
+    );
   }
 
   void _showAddToPlaylistSheet(BuildContext context, Track track) {
@@ -132,22 +111,18 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     final mediaItemAsync = ref.watch(currentMediaItemProvider);
     final playbackStateAsync = ref.watch(playbackStateProvider);
 
+    // Use the central manager logic via provider
     final activeDownloads = ref.watch(activeDownloadsProvider).value ?? {};
-    final isAutoDownloading = activeDownloads.contains(t.effectiveUrl);
+    final isDownloading = activeDownloads.contains(t.effectiveUrl);
 
-    final isProcessingDownload = _manualDownloading || isAutoDownloading;
-
-    // --- COMPARISON LOGIC FOR HIGHLIGHTING ---
     final mediaItem = mediaItemAsync.value;
     bool isCurrentTrack = false;
 
     if (mediaItem != null) {
       final currentTrackObj = mediaItem.extras?['track_obj'] as Track?;
       if (currentTrackObj != null) {
-        // Use the overridden == operator in Track (check models/track.dart)
         isCurrentTrack = currentTrackObj == t;
       } else {
-        // Fallback to ID comparison
         isCurrentTrack = mediaItem.id == t.effectiveUrl ||
                          (t.localPath.isNotEmpty && mediaItem.id == t.localPath);
       }
@@ -172,29 +147,21 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
       onTap: () {
         if (hasLink || isDownloaded) {
            if (widget.onTapOverride != null) {
-             // Case: Playlist screen or special context where the parent defines the queue
              widget.onTapOverride!();
            } else {
              final handler = ref.read(audioHandlerProvider);
              if (isCurrentTrack) {
                isPlaying ? handler.pause() : handler.play();
              } else {
-               // --- CHANGED: QUEUE LOGIC ---
-               // Get the current visible list (Filter/Search/Sort applied)
-               // This ensures only the "context" tracks are added to the queue
                final currentContextList = ref.read(filteredTracksProvider).value ?? [];
 
                if (currentContextList.isEmpty) {
-                 // Fallback if list is somehow empty
                  handler.playTrack(t);
                } else {
-                 // Find index of clicked track in the visible list
                  final index = currentContextList.indexOf(t);
                  if (index != -1) {
-                   // Queue the whole context list, starting at the clicked track
                    handler.playPlaylist(currentContextList, index);
                  } else {
-                   // Fallback if track not found in list (shouldn't happen)
                    handler.playTrack(t);
                  }
                }
@@ -287,7 +254,7 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
                 ],
               ),
             ),
-            _buildTrailingAction(hasLink, isDownloaded, isProcessingDownload),
+            _buildTrailingAction(hasLink, isDownloaded, isDownloading),
           ],
         ),
       ),

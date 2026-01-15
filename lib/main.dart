@@ -4,11 +4,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
-import 'models/playlist.dart'; // Import Playlist
+import 'models/playlist.dart';
 import 'models/sheet_tab.dart';
 import 'models/track.dart';
 import 'providers/app_providers.dart';
 import 'services/audio_handler.dart';
+import 'services/download_manager.dart'; // Import
 import 'ui/screens/main_screen.dart';
 
 Future<void> main() async {
@@ -24,14 +25,17 @@ Future<void> main() async {
   await Hive.initFlutter();
   Hive.registerAdapter(SheetTabAdapter());
   Hive.registerAdapter(TrackAdapter());
-  Hive.registerAdapter(PlaylistAdapter()); // Register Adapter
+  Hive.registerAdapter(PlaylistAdapter());
 
   await Hive.openBox('settings');
-  await Hive.openBox<Playlist>('playlists'); // Open Playlists Box
+  await Hive.openBox<Playlist>('playlists');
 
-  // Initialize Audio Service
+  // Initialize Download Manager (Singleton for the app life)
+  final downloadManager = DownloadManager();
+
+  // Initialize Audio Service, injecting DownloadManager
   final audioHandler = await AudioService.init(
-    builder: () => MyAudioHandler(),
+    builder: () => MyAudioHandler(downloadManager), // Inject here
     config: const AudioServiceConfig(
       androidNotificationChannelId: 'com.yetracker.channel.audio',
       androidNotificationChannelName: 'Ye Tracker Playback',
@@ -43,6 +47,7 @@ Future<void> main() async {
     ProviderScope(
       overrides: [
         audioHandlerProvider.overrideWithValue(audioHandler),
+        downloadManagerProvider.overrideWithValue(downloadManager), // Register here
       ],
       child: const YeTrackerApp(),
     ),
