@@ -1,0 +1,63 @@
+name: Auto Release v1..v2..
+
+on:
+  push:
+    branches: [ "main" ]
+
+# Essential: Gives the action permission to create Releases and Tags
+permissions:
+  contents: write
+
+jobs:
+  build_and_release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      # --- KEYSTORE SETUP START ---
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+
+      - name: Create key.properties
+        run: |
+          echo "storePassword=${{ secrets.KEY_STORE_PASSWORD }}" > android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+          echo "storeFile=upload-keystore.jks" >> android/key.properties
+      # --- KEYSTORE SETUP END ---
+
+      - name: Get Dependencies
+        run: flutter pub get
+
+      # BUILD STEP
+      # We inject the GitHub Run Number (e.g., 42) into the build
+      # Result: version 42 (v42) in Android settings
+      - name: Build APK (v${{ github.run_number }})
+        run: |
+          flutter build apk --release \
+            --build-name="v${{ github.run_number }}" \
+            --build-number=${{ github.run_number }}
+
+      # RELEASE STEP
+      # This creates a GitHub Release named "v42" and attaches the APK
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ github.run_number }}
+          name: Release v${{ github.run_number }}
+          body: "Automatic build triggered by push to main."
+          files: build/app/outputs/flutter-apk/app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
