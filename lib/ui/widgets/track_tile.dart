@@ -201,6 +201,7 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
                 ],
               ),
             ),
+            // Updated trailing action builder
             _buildTrailingAction(hasLink, isDownloaded, isProcessingDownload),
           ],
         ),
@@ -250,29 +251,57 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     );
   }
 
+  // FIXED: Modified to ensure consistent alignment and size
   Widget _buildTrailingAction(bool hasLink, bool isDownloaded, bool isDownloading) {
+    // We define a fixed box size for the trailing action.
+    // This ensures that whether it's a download button, a spinner, or a checkmark,
+    // they all occupy the exact same 40x40 space, keeping the list perfectly aligned.
+    const double boxSize = 40.0;
+
     if (isDownloading) {
-      return const SizedBox(
-        width: 20,
-        height: 20,
-        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24)
+      return SizedBox(
+        width: boxSize,
+        height: boxSize,
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24)
+          ),
+        ),
       );
     }
+
     if (isDownloaded) {
-      return const Icon(Icons.check_circle_rounded, color: Color(0xFF4CAF50), size: 24);
+      return SizedBox(
+        width: boxSize,
+        height: boxSize,
+        child: const Center(
+          child: Icon(Icons.check_circle_rounded, color: Color(0xFF4CAF50), size: 24),
+        ),
+      );
     }
+
     if (hasLink) {
       return Container(
+        width: boxSize,
+        height: boxSize,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: Colors.white.withAlpha((0.05 * 255).toInt()),
         ),
         child: IconButton(
+          // Removing default padding and constraints ensures exact centering
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
           icon: const Icon(Icons.download_rounded, color: Colors.white38, size: 20),
           onPressed: () => _manualDownload(widget.track),
         ),
       );
     }
-    return const SizedBox.shrink();
+
+    // Return an empty box of the same size to maintain layout consistency
+    // even if there is no link (prevents text from jumping width)
+    return const SizedBox(width: boxSize, height: boxSize);
   }
 }
