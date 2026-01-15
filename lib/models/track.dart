@@ -25,10 +25,8 @@ class Track extends HiveObject {
   @HiveField(10)
   final String albumArtUrl;
 
-  // Cached lowercased string for O(1) access during search filtering
   String? _searchIndex;
 
-  // --- NEW: Standard Headers to spoof a browser ---
   static const Map<String, String> imageHeaders = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
     'Referer': 'https://docs.google.com/',
@@ -71,7 +69,6 @@ class Track extends HiveObject {
     return _searchIndex!;
   }
 
-  /// Helper to convert "MM:SS" string to integer seconds for correct sorting
   int get durationInSeconds {
     try {
       if (!length.contains(':')) return 0;
@@ -89,7 +86,6 @@ class Track extends HiveObject {
     }
   }
 
-  /// Centralized logic to get the actual download/stream URL
   String get effectiveUrl {
     if (link.contains('pillows.su/f/')) {
       try {
@@ -101,6 +97,22 @@ class Track extends HiveObject {
       }
     }
     return link;
+  }
+
+  // --- ADDED: Equality Operators for Playlist Logic ---
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Track &&
+        other.title == title &&
+        other.artist == artist &&
+        other.era == era &&
+        other.link == link;
+  }
+
+  @override
+  int get hashCode {
+    return title.hashCode ^ artist.hashCode ^ era.hashCode ^ link.hashCode;
   }
 }
 

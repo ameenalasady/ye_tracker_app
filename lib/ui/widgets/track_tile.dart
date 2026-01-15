@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 import 'package:audio_service/audio_service.dart';
-import 'package:cached_network_image/cached_network_image.dart'; // IMPORT THIS
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,7 +13,9 @@ import '../../providers/app_providers.dart';
 
 class TrackTile extends ConsumerStatefulWidget {
   final Track track;
-  const TrackTile({required this.track, super.key});
+  final VoidCallback? onTapOverride;
+
+  const TrackTile({required this.track, this.onTapOverride, super.key});
 
   @override
   ConsumerState<TrackTile> createState() => _TrackTileState();
@@ -70,6 +72,44 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     }
   }
 
+  void _showAddToPlaylistSheet(BuildContext context, Track track) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E1E),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        final playlists = ref.watch(playlistsProvider);
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("Add to Playlist", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+              const SizedBox(height: 16),
+              if (playlists.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text("No playlists created yet.", style: TextStyle(color: Colors.white54)),
+                )
+              else
+                ...playlists.map((playlist) => ListTile(
+                  leading: const Icon(Icons.playlist_add, color: Colors.white54),
+                  title: Text(playlist.name, style: const TextStyle(color: Colors.white)),
+                  onTap: () {
+                    ref.read(playlistsProvider.notifier).addTrackToPlaylist(playlist, track);
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Added to ${playlist.name}")),
+                    );
+                  },
+                )),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.track.isInBox) {
@@ -97,24 +137,48 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
 
     final isProcessingDownload = _manualDownloading || isAutoDownloading;
 
-    final currentMediaId = mediaItemAsync.value?.id;
-    final isCurrentTrack = currentMediaId == t.effectiveUrl || (t.localPath.isNotEmpty && currentMediaId == t.localPath);
+    // --- Comparison Logic ---
+    final currentExtras = mediaItemAsync.value?.extras;
+    final currentTrackObj = currentExtras?['track_obj'] as Track?;
+
+    bool isCurrentTrack = false;
+
+    if (currentTrackObj != null) {
+      isCurrentTrack = currentTrackObj == t;
+    } else {
+      final currentMediaId = mediaItemAsync.value?.id;
+      isCurrentTrack = currentMediaId == t.effectiveUrl ||
+                       (t.localPath.isNotEmpty && currentMediaId == t.localPath);
+    }
 
     final playbackState = playbackStateAsync.value;
-    final isPlaying = isCurrentTrack && (playbackState?.playing ?? false);
-    final isBuffering = isCurrentTrack && (playbackState?.processingState == AudioProcessingState.buffering || playbackState?.processingState == AudioProcessingState.loading);
+    final processingState = playbackState?.processingState;
+
+    // --- FIX: Logic to stop animation when song is completed ---
+    final isPlaying = isCurrentTrack &&
+                      (playbackState?.playing ?? false) &&
+                      processingState != AudioProcessingState.completed;
+
+    final isBuffering = isCurrentTrack &&
+                        (processingState == AudioProcessingState.buffering ||
+                         processingState == AudioProcessingState.loading);
 
     final Color cardColor = const Color(0xFF252525);
     final Color activeBorderColor = const Color(0xFFFF5252);
 
     return GestureDetector(
+      onLongPress: () => _showAddToPlaylistSheet(context, t),
       onTap: () {
         if (hasLink || isDownloaded) {
-           if (isCurrentTrack) {
-             final handler = ref.read(audioHandlerProvider);
-             isPlaying ? handler.pause() : handler.play();
+           if (widget.onTapOverride != null) {
+             widget.onTapOverride!();
            } else {
-             ref.read(audioHandlerProvider).playTrack(t);
+             if (isCurrentTrack) {
+               final handler = ref.read(audioHandlerProvider);
+               isPlaying ? handler.pause() : handler.play();
+             } else {
+               ref.read(audioHandlerProvider).playTrack(t);
+             }
            }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -138,7 +202,7 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
         ),
         child: Row(
           children: [
-            // --- ARTWORK OR ICON ---
+            // --- ARTWORK ---
             Stack(
               children: [
                 Container(
@@ -151,10 +215,9 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
                   child: t.albumArtUrl.isNotEmpty
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          // CHANGED: Use CachedNetworkImage
                           child: CachedNetworkImage(
                             imageUrl: t.albumArtUrl,
-                            httpHeaders: Track.imageHeaders, // IMPORTANT: Passes headers to cache manager
+                            httpHeaders: Track.imageHeaders,
                             fit: BoxFit.cover,
                             placeholder: (context, url) => Center(child: _buildLeadingIcon(isCurrentTrack, isPlaying, isBuffering)),
                             errorWidget: (context, url, error) => Center(child: _buildLeadingIcon(isCurrentTrack, isPlaying, isBuffering)),
@@ -162,7 +225,6 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
                         )
                       : Center(child: _buildLeadingIcon(isCurrentTrack, isPlaying, isBuffering)),
                 ),
-                // Overlay playing animation on top of image if playing
                 if (t.albumArtUrl.isNotEmpty && (isBuffering || (isCurrentTrack && isPlaying)))
                   Container(
                     width: 50,

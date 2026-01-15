@@ -11,13 +11,11 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final _player = AudioPlayer();
   final _dio = Dio();
 
-  // Expose currently downloading URLs to the UI
   final ValueNotifier<Set<String>> downloadingTracks = ValueNotifier({});
 
   MyAudioHandler() {
     _player.playbackEventStream.listen(_broadcastState);
 
-    // Listen for duration changes
     _player.durationStream.listen((duration) {
       final currentItem = mediaItem.value;
       if (currentItem != null && duration != null) {
@@ -25,8 +23,26 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       }
     });
 
+    // --- FIX: Handle End of Queue Correctly ---
     _player.processingStateStream.listen((state) {
-      if (state == ProcessingState.completed) stop();
+      if (state == ProcessingState.completed) {
+        // If there is a next song, just_audio usually handles it with ConcatenatingAudioSource,
+        // but if we are at the end, we MUST manually pause to update the UI state.
+        if (_player.hasNext) {
+          _player.seekToNext();
+        } else {
+          // End of playlist or single track: Stop playback and reset to 0
+          _player.pause();
+          _player.seek(Duration.zero);
+        }
+      }
+    });
+
+    // Sync current media item with queue index
+    _player.currentIndexStream.listen((index) {
+      if (index != null && queue.value.isNotEmpty && index < queue.value.length) {
+        mediaItem.add(queue.value[index]);
+      }
     });
   }
 
@@ -74,44 +90,75 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   @override
   Future<void> seek(Duration position) => _player.seek(position);
 
-  Future<void> playTrack(Track track) async {
-    String uri = track.effectiveUrl;
-    bool isLocal = track.localPath.isNotEmpty && File(track.localPath).existsSync();
+  @override
+  Future<void> skipToNext() => _player.seekToNext();
 
-    if (isLocal) {
-      debugPrint("Playing from local cache: ${track.localPath}");
-      uri = track.localPath;
-    } else {
-      debugPrint("Streaming: $uri");
+  @override
+  Future<void> skipToPrevious() => _player.seekToPrevious();
 
-      final autoDownload = Hive.box('settings').get('auto_download', defaultValue: true);
+  // --- Play a list of tracks (Playlist) ---
+  Future<void> playPlaylist(List<Track> tracks, int initialIndex) async {
+    // 1. Convert Tracks to MediaItems
+    final mediaItems = tracks.map((track) => _createMediaItem(track)).toList();
 
-      if (autoDownload) {
-        _cacheTrack(track);
-      }
+    // 2. Update Queue
+    queue.add(mediaItems);
+
+    // Force update the current media item immediately.
+    if (mediaItems.isNotEmpty && initialIndex < mediaItems.length) {
+      mediaItem.add(mediaItems[initialIndex]);
     }
 
-    // Initial MediaItem with Artwork
-    final item = MediaItem(
-      id: uri,
+    // 3. Setup Audio Sources
+    final audioSources = tracks.map((track) {
+      String uri = track.effectiveUrl;
+      bool isLocal = track.localPath.isNotEmpty && File(track.localPath).existsSync();
+
+      if (isLocal) {
+        uri = track.localPath;
+      } else {
+        final autoDownload = Hive.box('settings').get('auto_download', defaultValue: true);
+        if (autoDownload) {
+          _cacheTrack(track);
+        }
+      }
+
+      return AudioSource.uri(
+        isLocal ? Uri.file(uri) : Uri.parse(uri),
+        tag: _createMediaItem(track)
+      );
+    }).toList();
+
+    // 4. Load into Player
+    try {
+      await _player.setAudioSource(
+        ConcatenatingAudioSource(children: audioSources),
+        initialIndex: initialIndex,
+      );
+      play();
+    } catch (e) {
+      debugPrint("Error playing playlist: $e");
+    }
+  }
+
+  // --- Play Single Track ---
+  Future<void> playTrack(Track track) async {
+    await playPlaylist([track], 0);
+  }
+
+  MediaItem _createMediaItem(Track track) {
+    String uri = track.effectiveUrl;
+    if (track.localPath.isNotEmpty && File(track.localPath).existsSync()) {
+      uri = track.localPath;
+    }
+
+    return MediaItem(
+      id: uri, // Use URI as ID
       title: track.title,
       artist: track.artist.isEmpty ? track.era : track.artist,
       artUri: track.albumArtUrl.isNotEmpty ? Uri.parse(track.albumArtUrl) : null,
-      duration: null,
+      extras: {'track_obj': track}, // Store full object for UI comparison
     );
-
-    mediaItem.add(item);
-
-    try {
-      if (isLocal) {
-        await _player.setFilePath(uri);
-      } else {
-        await _player.setUrl(uri);
-      }
-      play();
-    } catch (e) {
-      debugPrint("Error playing audio: $e");
-    }
   }
 
   Future<void> _cacheTrack(Track track) async {
@@ -120,12 +167,9 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
     try {
       downloadingTracks.value = {...downloadingTracks.value, track.effectiveUrl};
-
       final dir = await getApplicationDocumentsDirectory();
       final safeName = track.displayName.replaceAll(RegExp(r'[^\w\s\.-]'), '').trim();
       final savePath = '${dir.path}/$safeName.mp3';
-
-      debugPrint("Starting background cache for: ${track.title}");
 
       await _dio.download(
         track.effectiveUrl,
@@ -134,7 +178,6 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       );
 
       if (File(savePath).existsSync()) {
-        debugPrint("Cache complete: $savePath");
         track.localPath = savePath;
         if (track.isInBox) {
           await track.save();

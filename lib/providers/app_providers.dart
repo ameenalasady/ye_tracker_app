@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart'; // Added
 import 'package:path_provider/path_provider.dart';
+import '../models/playlist.dart';
 import '../models/sheet_tab.dart';
 import '../models/track.dart';
 import '../services/tracker_parser.dart';
@@ -17,8 +19,6 @@ final searchQueryProvider = StateProvider<String>((ref) => "");
 enum SortOption { defaultOrder, newest, oldest, nameAz, nameZa, shortest, longest }
 
 final sortOptionProvider = StateProvider<SortOption>((ref) => SortOption.defaultOrder);
-
-// Stores which Eras are currently selected. If empty, it assumes "All Eras".
 final selectedErasProvider = StateProvider<Set<String>>((ref) => {});
 
 // --- SETTINGS PROVIDERS ---
@@ -28,10 +28,8 @@ final autoDownloadProvider = StateProvider<bool>((ref) {
   return box.get('auto_download', defaultValue: true);
 });
 
-// Calculate Cache Size
 final cacheSizeProvider = FutureProvider<String>((ref) async {
   ref.watch(tabsProvider);
-
   final dir = await getApplicationDocumentsDirectory();
   try {
     final files = dir.listSync().where((f) => f.path.endsWith('.mp3'));
@@ -39,7 +37,6 @@ final cacheSizeProvider = FutureProvider<String>((ref) async {
     for (var f in files) {
       totalBytes += (f as File).lengthSync();
     }
-
     if (totalBytes < 1024 * 1024) {
       return "${(totalBytes / 1024).toStringAsFixed(1)} KB";
     }
@@ -65,7 +62,6 @@ final currentMediaItemProvider = StreamProvider<MediaItem?>((ref) {
 
 final activeDownloadsProvider = StreamProvider<Set<String>>((ref) {
   final handler = ref.watch(audioHandlerProvider);
-
   return Stream.multi((controller) {
     void listener() {
       if (!controller.isClosed) {
@@ -95,7 +91,6 @@ final tracksProvider = FutureProvider<List<Track>>((ref) async {
   if (tab == null) return [];
 
   final boxName = 'tracks_${tab.gid}';
-
   Box<Track> box;
   if (Hive.isBoxOpen(boxName)) {
     box = Hive.box<Track>(boxName);
@@ -127,17 +122,66 @@ final tracksProvider = FutureProvider<List<Track>>((ref) async {
   }
 });
 
+// --- PLAYLISTS PROVIDER ---
+
+final playlistsProvider = StateNotifierProvider<PlaylistsNotifier, List<Playlist>>((ref) {
+  return PlaylistsNotifier();
+});
+
+class PlaylistsNotifier extends StateNotifier<List<Playlist>> {
+  late Box<Playlist> _box;
+
+  PlaylistsNotifier() : super([]) {
+    _init();
+  }
+
+  Future<void> _init() async {
+    if (!Hive.isBoxOpen('playlists')) {
+      _box = await Hive.openBox<Playlist>('playlists');
+    } else {
+      _box = Hive.box<Playlist>('playlists');
+    }
+    // Listen to changes
+    _box.listenable().addListener(() {
+      state = _box.values.toList();
+    });
+    state = _box.values.toList();
+  }
+
+  Future<void> createPlaylist(String name) async {
+    final newPlaylist = Playlist(name: name, tracks: []);
+    await _box.add(newPlaylist);
+    state = _box.values.toList();
+  }
+
+  Future<void> deletePlaylist(Playlist playlist) async {
+    await playlist.delete(); // HiveObject method
+    state = _box.values.toList();
+  }
+
+  Future<void> addTrackToPlaylist(Playlist playlist, Track track) async {
+    // Avoid duplicates based on logic
+    if (!playlist.tracks.any((t) => t == track)) {
+      playlist.tracks.add(track);
+      await playlist.save();
+      state = _box.values.toList(); // Trigger update
+    }
+  }
+
+  Future<void> removeTrackFromPlaylist(Playlist playlist, Track track) async {
+    playlist.tracks.removeWhere((t) => t == track);
+    await playlist.save();
+    state = _box.values.toList();
+  }
+}
+
 // --- FILTERING LOGIC ---
 
-// Returns a unique list of Eras present in the current loaded tab
 final availableErasProvider = Provider<List<String>>((ref) {
   final tracksAsync = ref.watch(tracksProvider);
   return tracksAsync.maybeWhen(
     data: (tracks) {
-      // Extract unique non-empty eras
       final eras = tracks.map((t) => t.era.trim()).where((e) => e.isNotEmpty).toSet().toList();
-      // Keep them in order of appearance (which usually matches the spreadsheet chronology)
-      // or sort them if you prefer alphabetical
       return eras;
     },
     orElse: () => [],
@@ -151,27 +195,20 @@ final filteredTracksProvider = Provider<AsyncValue<List<Track>>>((ref) {
   final selectedEras = ref.watch(selectedErasProvider);
 
   return tracksAsync.whenData((tracks) {
-    // 1. Basic Validity Filter (Must have length)
     var result = tracks.where((t) => t.length.trim().isNotEmpty).toList();
 
-    // 2. Era Filtering
     if (selectedEras.isNotEmpty) {
       result = result.where((t) => selectedEras.contains(t.era.trim())).toList();
     }
 
-    // 3. Search Filtering
     if (query.isNotEmpty) {
       result = result.where((t) => t.searchIndex.contains(query)).toList();
     }
 
-    // 4. Sorting
-    // We create a copy to sort so we don't mutate the original cached list order
     result = List.of(result);
 
     switch (sortOption) {
       case SortOption.newest:
-        // Attempt string sort on ISO dates or similar.
-        // Fallback: Use list order if no date, or assume bottom of list is newer if data is chronological
         result.sort((a, b) => b.releaseDate.compareTo(a.releaseDate));
         break;
       case SortOption.oldest:
@@ -191,15 +228,12 @@ final filteredTracksProvider = Provider<AsyncValue<List<Track>>>((ref) {
         break;
       case SortOption.defaultOrder:
       default:
-        // Do nothing, keep spreadsheet order
         break;
     }
 
     return result;
   });
 });
-
-// --- CACHE UTILITIES ---
 
 class CacheManager {
   static Future<void> clearAllCache() async {

@@ -1,5 +1,5 @@
 import 'package:audio_service/audio_service.dart';
-import 'package:cached_network_image/cached_network_image.dart'; // IMPORT THIS
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/track.dart';
@@ -13,7 +13,6 @@ class PlayerScreen extends ConsumerStatefulWidget {
 }
 
 class _PlayerScreenState extends ConsumerState<PlayerScreen> {
-  // Used to decouple the slider from the player while dragging
   double? _dragValue;
 
   String _formatDuration(Duration? duration) {
@@ -21,6 +20,44 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     String twoDigits(int n) => n.toString().padLeft(2, "0");
     String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
     return "${duration.inMinutes}:$twoDigitSeconds";
+  }
+
+  void _showAddToPlaylistSheet(BuildContext context, Track track) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E1E),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        final playlists = ref.watch(playlistsProvider);
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("Add to Playlist", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+              const SizedBox(height: 16),
+              if (playlists.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text("No playlists created yet. Go to Library to create one.", style: TextStyle(color: Colors.white54)),
+                )
+              else
+                ...playlists.map((playlist) => ListTile(
+                  leading: const Icon(Icons.playlist_add, color: Colors.white54),
+                  title: Text(playlist.name, style: const TextStyle(color: Colors.white)),
+                  onTap: () {
+                    ref.read(playlistsProvider.notifier).addTrackToPlaylist(playlist, track);
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Added to ${playlist.name}")),
+                    );
+                  },
+                )),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -35,6 +72,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     if (mediaItem == null) return const SizedBox.shrink();
 
+    // Retrieve the Track object from extras if available
+    final Track? currentTrack = mediaItem.extras?['track_obj'] as Track?;
+
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
       body: Container(
@@ -47,13 +87,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               const Color(0xFF121212).withValues(alpha: 0.9),
             ],
           ),
-          // Background blur image
           image: (mediaItem.artUri != null)
               ? DecorationImage(
-                  // CHANGED: CachedNetworkImageProvider
                   image: CachedNetworkImageProvider(
                     mediaItem.artUri.toString(),
-                    headers: Track.imageHeaders, // Fixes 403
+                    headers: Track.imageHeaders,
                   ),
                   fit: BoxFit.cover,
                   colorFilter: ColorFilter.mode(
@@ -66,16 +104,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              // --- HEADER (Dismiss Button) ---
+              // --- HEADER ---
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     IconButton(
                       icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 32),
                       onPressed: () => Navigator.pop(context),
                     ),
-                    const Spacer(),
                     const Text(
                       "Now Playing",
                       style: TextStyle(
@@ -85,8 +123,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const Spacer(),
-                    const SizedBox(width: 48), // Balance the row
+                    // NEW: Add to Playlist Button
+                    IconButton(
+                      icon: const Icon(Icons.playlist_add_rounded, color: Colors.white),
+                      onPressed: currentTrack != null
+                          ? () => _showAddToPlaylistSheet(context, currentTrack)
+                          : null,
+                    ),
                   ],
                 ),
               ),
@@ -113,10 +156,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   child: (mediaItem.artUri != null)
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(24),
-                          // CHANGED: CachedNetworkImage
                           child: CachedNetworkImage(
                             imageUrl: mediaItem.artUri.toString(),
-                            httpHeaders: Track.imageHeaders, // Fixes 403
+                            httpHeaders: Track.imageHeaders,
                             fit: BoxFit.cover,
                             errorWidget: (ctx, _, __) => const Center(
                               child: Icon(Icons.music_note_rounded, size: 120, color: Colors.white12),
@@ -173,11 +215,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   final position = snapshot.data ?? Duration.zero;
                   final duration = mediaItem.duration ?? Duration.zero;
 
-                  // Use _dragValue while dragging, otherwise use actual position
                   double sliderValue = (_dragValue ?? position.inMilliseconds.toDouble());
                   double max = duration.inMilliseconds.toDouble();
 
-                  // Safety checks
                   if (max <= 0) max = 1.0;
                   if (sliderValue > max) sliderValue = max;
                   if (sliderValue < 0) sliderValue = 0;
@@ -199,19 +239,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             min: 0,
                             max: max,
                             value: sliderValue,
-                            // Called when user touches the slider
                             onChangeStart: (value) {
                                setState(() {
                                  _dragValue = value;
                                });
                             },
-                            // Called while dragging
                             onChanged: (value) {
                               setState(() {
                                 _dragValue = value;
                               });
                             },
-                            // Called when user releases
                             onChangeEnd: (value) {
                               audioHandler.seek(Duration(milliseconds: value.toInt()));
                               setState(() {

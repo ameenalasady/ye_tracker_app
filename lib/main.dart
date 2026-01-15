@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'models/playlist.dart'; // Import Playlist
 import 'models/sheet_tab.dart';
 import 'models/track.dart';
 import 'providers/app_providers.dart';
@@ -23,7 +24,10 @@ Future<void> main() async {
   await Hive.initFlutter();
   Hive.registerAdapter(SheetTabAdapter());
   Hive.registerAdapter(TrackAdapter());
+  Hive.registerAdapter(PlaylistAdapter()); // Register Adapter
+
   await Hive.openBox('settings');
+  await Hive.openBox<Playlist>('playlists'); // Open Playlists Box
 
   // Initialize Audio Service
   final audioHandler = await AudioService.init(
@@ -56,10 +60,10 @@ class YeTrackerApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF121212), // Deep dark background
-        fontFamily: 'Inter', // Ensure you have a nice font, or fallback to default
+        scaffoldBackgroundColor: const Color(0xFF121212),
+        fontFamily: 'Inter',
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFFFF5252), // Coral Red
+          primary: Color(0xFFFF5252),
           surface: Color(0xFF1E1E1E),
           onSurface: Colors.white,
         ),
