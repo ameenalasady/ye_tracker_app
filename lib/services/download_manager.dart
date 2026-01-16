@@ -29,10 +29,6 @@ class DownloadManager extends ValueNotifier<Set<String>> {
     // 2. Permissions (Android specifically)
     if (Platform.isAndroid) {
       final status = await Permission.storage.request();
-      // On Android 13+, storage permissions are granular (audio, images, etc).
-      // Usually getApplicationDocumentsDirectory doesn't need explicit storage permission
-      // for internal app storage, but if you change to external, you need it.
-      // Keeping generic check for safety.
       if (status.isPermanentlyDenied) {
         onError?.call("Storage permission denied");
         return;
@@ -65,6 +61,14 @@ class DownloadManager extends ValueNotifier<Set<String>> {
         onSuccess?.call();
       } else {
         throw Exception("File not found after download");
+      }
+    } on DioException catch (e) {
+      // --- FIX: Specific offline error handling ---
+      if (e.type == DioExceptionType.connectionError || e.error is SocketException) {
+        onError?.call("No Internet Connection");
+      } else {
+        debugPrint("Download failed for ${track.title}: $e");
+        onError?.call("Download Failed");
       }
     } catch (e) {
       debugPrint("Download failed for ${track.title}: $e");

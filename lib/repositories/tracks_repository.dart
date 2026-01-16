@@ -8,9 +8,28 @@ class TracksRepository {
 
   TracksRepository({required String sourceUrl}) : _parser = TrackerParser(sourceUrl);
 
-  /// Fetches the list of tabs (Eras) from the network.
+  /// Fetches the list of tabs (Eras).
+  /// FIX: Implemented Network-First, Cache-Fallback strategy.
   Future<List<SheetTab>> fetchTabs() async {
-    return await _parser.fetchTabs();
+    final box = Hive.box<SheetTab>('tabs');
+
+    try {
+      // 1. Try Network
+      final tabs = await _parser.fetchTabs();
+
+      // 2. If successful, update cache
+      await box.clear();
+      await box.addAll(tabs);
+
+      return tabs;
+    } catch (e) {
+      // 3. If Network fails, check cache
+      if (box.isNotEmpty) {
+        return box.values.toList();
+      }
+      // 4. If no cache and no network, rethrow
+      rethrow;
+    }
   }
 
   /// Tries to load tracks from local Hive box.
@@ -18,12 +37,16 @@ class TracksRepository {
   Future<List<Track>> getTracksForTab(SheetTab tab) async {
     final box = await _openBoxForTab(tab);
 
+    // FIX: If we have data, return it immediately (Cache First).
+    // This ensures offline mode works instantly.
+    // To get new data, the user must use "Pull to Refresh" in the UI,
+    // which calls clearLocalCache().
     if (box.isNotEmpty) {
       return box.values.toList();
     }
 
     try {
-      // Fetch from network
+      // Fetch from network if cache is empty
       final tracks = await _parser.fetchTracksForTab(tab.gid);
 
       // Save to local cache

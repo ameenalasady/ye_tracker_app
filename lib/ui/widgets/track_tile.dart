@@ -26,8 +26,8 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000), // Slower for smoother wave
-    )..repeat(); // Continuous loop without reversing looks better for sine waves
+      duration: const Duration(milliseconds: 1000),
+    )..repeat();
   }
 
   @override
@@ -89,6 +89,16 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     );
   }
 
+  // --- FIX: Helper to check basic connectivity ---
+  Future<bool> _hasInternet() async {
+    try {
+      final result = await InternetAddress.lookup('google.com');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } on SocketException catch (_) {
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.track.isInBox) {
@@ -111,7 +121,6 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     final mediaItemAsync = ref.watch(currentMediaItemProvider);
     final playbackStateAsync = ref.watch(playbackStateProvider);
 
-    // Use the central manager logic via provider
     final activeDownloads = ref.watch(activeDownloadsProvider).value ?? {};
     final isDownloading = activeDownloads.contains(t.effectiveUrl);
 
@@ -144,28 +153,23 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
 
     return GestureDetector(
       onLongPress: () => _showAddToPlaylistSheet(context, t),
-      onTap: () {
-        if (hasLink || isDownloaded) {
-           if (widget.onTapOverride != null) {
-             widget.onTapOverride!();
-           } else {
-             final handler = ref.read(audioHandlerProvider);
-             if (isCurrentTrack) {
-               isPlaying ? handler.pause() : handler.play();
-             } else {
-               final currentContextList = ref.read(filteredTracksProvider).value ?? [];
-
-               if (currentContextList.isEmpty) {
-                 handler.playTrack(t);
-               } else {
-                 final index = currentContextList.indexOf(t);
-                 if (index != -1) {
-                   handler.playPlaylist(currentContextList, index);
-                 } else {
-                   handler.playTrack(t);
-                 }
-               }
+      onTap: () async {
+        // --- FIX: Robust Offline Check ---
+        if (isDownloaded) {
+           _playTrack(t, isCurrentTrack, isPlaying);
+        } else if (hasLink) {
+           // We are not downloaded, check internet before trying to stream
+           // Note: This is a simple check. AudioHandler also handles errors,
+           // but checking here prevents the UI from entering a loading state unnecessarily.
+           bool online = await _hasInternet();
+           if (!online) {
+             if (context.mounted) {
+               ScaffoldMessenger.of(context).showSnackBar(
+                 const SnackBar(content: Text("No Internet Connection. Download tracks to play offline.")),
+               );
              }
+           } else {
+             _playTrack(t, isCurrentTrack, isPlaying);
            }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -261,6 +265,31 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     );
   }
 
+  void _playTrack(Track t, bool isCurrentTrack, bool isPlaying) {
+     if (widget.onTapOverride != null) {
+       widget.onTapOverride!();
+       return;
+     }
+
+     final handler = ref.read(audioHandlerProvider);
+     if (isCurrentTrack) {
+       isPlaying ? handler.pause() : handler.play();
+     } else {
+       final currentContextList = ref.read(filteredTracksProvider).value ?? [];
+
+       if (currentContextList.isEmpty) {
+         handler.playTrack(t);
+       } else {
+         final index = currentContextList.indexOf(t);
+         if (index != -1) {
+           handler.playPlaylist(currentContextList, index);
+         } else {
+           handler.playTrack(t);
+         }
+       }
+     }
+  }
+
   Widget _buildLeadingIcon(bool isCurrent, bool isPlaying, bool isBuffering) {
     if (isBuffering) {
       return const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF5252)));
@@ -295,17 +324,9 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
   }
 
   Widget _buildBar(int index) {
-    // Smooth Sine Wave Animation
-    // We use the controller value (0 to 1) multiplied by 2*pi for a full sine cycle.
-    // We add an offset based on the index so the bars don't move in unison.
-
     final double t = _animController.value;
-    final double offset = index * (pi / 2); // 90-degree phase shift per bar
-
-    // sin() returns -1 to 1. We map it to 0 to 1 using 0.5 * (sin + 1)
+    final double offset = index * (pi / 2);
     final double wave = 0.5 * (sin(t * 2 * pi + offset) + 1);
-
-    // Map the wave (0.0 to 1.0) to a Height (6.0 to 18.0)
     final double height = 6.0 + (wave * 12.0);
 
     return Container(
