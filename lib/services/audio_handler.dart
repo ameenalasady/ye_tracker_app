@@ -10,6 +10,11 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final _player = AudioPlayer();
   final DownloadManager downloadManager; // Dependency Injection
 
+  // FIX: Internal cache to map Media IDs (URIs) back to Track objects.
+  // We do this because passing the Track object (HiveObject) in MediaItem.extras
+  // breaks the Platform Channel serialization, causing the notification to fail updating.
+  final Map<String, Track> _trackCache = {};
+
   ConcatenatingAudioSource? _playlist;
 
   // Constructor accepts DownloadManager
@@ -31,19 +36,22 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   void _notifyAudioHandlerAboutPlaybackEvents() {
     _player.playbackEventStream.listen((PlaybackEvent event) {
       final playing = _player.playing;
+
+      // Standard controls: Previous, Play/Pause, Next
+      final controls = [
+        MediaControl.skipToPrevious,
+        if (playing) MediaControl.pause else MediaControl.play,
+        MediaControl.skipToNext,
+      ];
+
       playbackState.add(playbackState.value.copyWith(
-        controls: [
-          MediaControl.skipToPrevious,
-          if (playing) MediaControl.pause else MediaControl.play,
-          MediaControl.stop,
-          MediaControl.skipToNext,
-        ],
+        controls: controls,
+        androidCompactActionIndices: const [0, 1, 2],
         systemActions: const {
           MediaAction.seek,
           MediaAction.seekForward,
           MediaAction.seekBackward,
         },
-        androidCompactActionIndices: const [0, 1, 3],
         processingState: const {
           ProcessingState.idle: AudioProcessingState.idle,
           ProcessingState.loading: AudioProcessingState.loading,
@@ -76,12 +84,12 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
         mediaItem.add(item);
 
-        // Auto Download Logic delegated to DownloadManager
-        final track = item.extras?['track_obj'] as Track?;
+        // FIX: Retrieve Track from our local cache using the ID
+        final track = _trackCache[item.id];
+
         if (track != null) {
           final autoDownload = Hive.box('settings').get('auto_download', defaultValue: true);
           if (autoDownload) {
-             // We don't need a callback here, just fire and forget
              downloadManager.downloadTrack(track);
           }
         }
@@ -223,7 +231,10 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   }
 
   AudioSource _createAudioSource(MediaItem item) {
-    final track = item.extras?['track_obj'] as Track?;
+    // FIX: Retrieve from cache
+    final track = _trackCache[item.id];
+
+    // Fallback if track not found (shouldn't happen with this logic)
     if (track == null) {
       return AudioSource.uri(Uri.parse(item.id), tag: item);
     }
@@ -247,12 +258,17 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       uri = track.localPath;
     }
 
+    // FIX: Store track in local cache instead of extras
+    _trackCache[uri] = track;
+
     return MediaItem(
       id: uri,
       title: track.title,
-      artist: track.artist.isEmpty ? track.era : track.artist,
-      artUri: track.albumArtUrl.isNotEmpty ? Uri.parse(track.albumArtUrl) : null,
-      extras: {'track_obj': track},
+      artist: track.artist.isEmpty ? (track.era.isNotEmpty ? track.era : "Ye Tracker") : track.artist,
+      artUri: track.albumArtUrl.isNotEmpty ? Uri.tryParse(track.albumArtUrl) : null,
+      // FIX: Ensure extras is clean/null.
+      // Passing HiveObjects here crashes the Platform Channel update.
+      extras: null,
     );
   }
 

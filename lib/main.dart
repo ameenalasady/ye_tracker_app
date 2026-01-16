@@ -41,6 +41,10 @@ Future<void> main() async {
       androidNotificationChannelId: 'com.yetracker.channel.audio',
       androidNotificationChannelName: 'Ye Tracker Playback',
       androidNotificationOngoing: true,
+      androidStopForegroundOnPause: true,
+      androidNotificationIcon: 'mipmap/ic_launcher',
+      androidShowNotificationBadge: true,
+      notificationColor: Color(0xFFFF5252),
     ),
   );
 
