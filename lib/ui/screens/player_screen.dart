@@ -366,12 +366,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 }
 
-// --- NEW QUEUE SHEET COMPONENT ---
-class QueueSheet extends ConsumerWidget {
+// --- UPDATED QUEUE SHEET COMPONENT ---
+// Changed to ConsumerStatefulWidget to handle initial scroll logic
+class QueueSheet extends ConsumerStatefulWidget {
   const QueueSheet({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<QueueSheet> createState() => _QueueSheetState();
+}
+
+class _QueueSheetState extends ConsumerState<QueueSheet> {
+  // Flag to ensure we only auto-scroll once when opening the sheet
+  bool _hasScrolledToCurrent = false;
+
+  @override
+  Widget build(BuildContext context) {
     final queueAsync = ref.watch(queueProvider);
     final currentItemAsync = ref.watch(currentMediaItemProvider);
     final audioHandler = ref.watch(audioHandlerProvider);
@@ -406,9 +415,37 @@ class QueueSheet extends ConsumerWidget {
 
                     final currentId = currentItemAsync.value?.id;
 
+                    // --- AUTO-SCROLL LOGIC ---
+                    // Perform this check every time the builder runs, but execute jump only once
+                    if (!_hasScrolledToCurrent && currentId != null) {
+                      final index = queue.indexWhere((item) => item.id == currentId);
+                      if (index > 0) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (scrollController.hasClients) {
+                            // Estimate height (72.0 is standard height for Title+Subtitle ListTile)
+                            // This jumps to show the current song at the top of the visible area
+                            // Users can still scroll up to see previous songs
+                            scrollController.jumpTo(index * 72.0);
+                            if (mounted) {
+                              setState(() {
+                                _hasScrolledToCurrent = true;
+                              });
+                            }
+                          }
+                        });
+                      } else {
+                         // If index is 0 or -1, mark as scrolled so we don't keep trying
+                         _hasScrolledToCurrent = true;
+                      }
+                    }
+
                     return ReorderableListView.builder(
                       scrollController: scrollController,
                       itemCount: queue.length,
+                      // Adding itemExtent helps performance and makes scrolling smoother
+                      // Standard 2-line ListTile height is roughly 72.0
+                      // If you have variable heights, remove this, but the jumpTo calculation above might be less accurate
+                      // itemExtent: 72.0,
                       proxyDecorator: (child, index, animation) {
                         return Material(
                           color: const Color(0xFF2A2A2A),
@@ -430,28 +467,32 @@ class QueueSheet extends ConsumerWidget {
                           onDismissed: (_) {
                             audioHandler.removeQueueItemAt(index);
                           },
-                          child: ListTile(
-                            key: ValueKey("${item.id}_$index"), // Stable key for reordering
-                            leading: Container(
-                              width: 40, height: 40,
-                              decoration: BoxDecoration(
-                                color: isPlaying ? const Color(0xFFFF5252).withValues(alpha: 0.2) : const Color(0xFF2A2A2A),
-                                borderRadius: BorderRadius.circular(8),
+                          child: SizedBox(
+                            // Enforce height for consistent scrolling calculation
+                            height: 72,
+                            child: ListTile(
+                              key: ValueKey("${item.id}_$index"), // Stable key for reordering
+                              leading: Container(
+                                width: 40, height: 40,
+                                decoration: BoxDecoration(
+                                  color: isPlaying ? const Color(0xFFFF5252).withValues(alpha: 0.2) : const Color(0xFF2A2A2A),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: isPlaying
+                                  ? const Icon(Icons.graphic_eq, color: Color(0xFFFF5252))
+                                  : const Icon(Icons.music_note, color: Colors.white24),
                               ),
-                              child: isPlaying
-                                ? const Icon(Icons.graphic_eq, color: Color(0xFFFF5252))
-                                : const Icon(Icons.music_note, color: Colors.white24),
+                              title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                                style: TextStyle(color: isPlaying ? const Color(0xFFFF5252) : Colors.white)),
+                              subtitle: Text(item.artist ?? "", maxLines: 1, style: const TextStyle(color: Colors.white54)),
+                              trailing: ReorderableDragStartListener(
+                                index: index,
+                                child: const Icon(Icons.drag_handle_rounded, color: Colors.white24),
+                              ),
+                              onTap: () {
+                                audioHandler.skipToQueueItem(index);
+                              },
                             ),
-                            title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: isPlaying ? const Color(0xFFFF5252) : Colors.white)),
-                            subtitle: Text(item.artist ?? "", maxLines: 1, style: const TextStyle(color: Colors.white54)),
-                            trailing: ReorderableDragStartListener(
-                              index: index,
-                              child: const Icon(Icons.drag_handle_rounded, color: Colors.white24),
-                            ),
-                            onTap: () {
-                              audioHandler.skipToQueueItem(index);
-                            },
                           ),
                         );
                       },
