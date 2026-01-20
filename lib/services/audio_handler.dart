@@ -123,7 +123,10 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
     // 1. Get Settings
     final settingsBox = Hive.box('settings');
-    final bool autoDownload = settingsBox.get('auto_download', defaultValue: true);
+    final bool autoDownload = settingsBox.get(
+      'auto_download',
+      defaultValue: true,
+    );
     final int preloadCount = settingsBox.get('preload_count', defaultValue: 1);
 
     // 2. Get Current State
@@ -149,7 +152,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       final nextIndex = indices[currentEffectivePos + i];
 
       if (autoDownload) {
-         // If auto-download is ON, we save to disk.
+        // If auto-download is ON, we save to disk.
         _downloadByIndex(nextIndex);
       } else {
         // If auto-download is OFF, just_audio automatically buffers the
