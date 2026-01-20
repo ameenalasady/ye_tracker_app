@@ -61,6 +61,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
     final autoDownload = ref.watch(autoDownloadProvider);
     final cacheSizeAsync = ref.watch(cacheSizeProvider);
     final maxConcurrent = ref.watch(maxConcurrentDownloadsProvider);
+    final preloadCount = ref.watch(preloadCountProvider);
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -141,17 +142,68 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                   value: autoDownload,
                   activeThumbColor: const Color(0xFFFF5252),
                   title: const Text(
-                    "Auto-Download on Play",
+                    "Auto-Download",
                     style: TextStyle(color: Colors.white),
                   ),
                   subtitle: const Text(
-                    "Automatically save songs when you play them",
+                    "Automatically download songs when playing",
                     style: TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                   onChanged: (val) {
                     ref.read(autoDownloadProvider.notifier).set(val);
                   },
                 ),
+                // --- NEW: Preload Count Setting ---
+                Divider(height: 1, color: Colors.white.withValues(alpha: 0.05)),
+                ListTile(
+                  title: const Text(
+                    "Preload Next Songs",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  subtitle: Text(
+                    "Prepare ${preloadCount == 0 ? 'none' : '$preloadCount song${preloadCount > 1 ? 's' : ''}'} in advance",
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(
+                          Icons.remove_circle_outline,
+                          color: Colors.white54,
+                        ),
+                        onPressed: preloadCount > 0
+                            ? () => ref
+                                  .read(preloadCountProvider.notifier)
+                                  .set(preloadCount - 1)
+                            : null,
+                      ),
+                      SizedBox(
+                        width: 20,
+                        child: Text(
+                          "$preloadCount",
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.add_circle_outline,
+                          color: Colors.white54,
+                        ),
+                        onPressed: preloadCount < 10
+                            ? () => ref
+                                  .read(preloadCountProvider.notifier)
+                                  .set(preloadCount + 1)
+                            : null,
+                      ),
+                    ],
+                  ),
+                ),
+                // ----------------------------------
                 Divider(height: 1, color: Colors.white.withValues(alpha: 0.05)),
                 ListTile(
                   title: const Text(
@@ -176,11 +228,15 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                                   .set(maxConcurrent - 1)
                             : null,
                       ),
-                      Text(
-                        "$maxConcurrent",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                      SizedBox(
+                        width: 20,
+                        child: Text(
+                          "$maxConcurrent",
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       IconButton(
@@ -305,7 +361,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
           const SizedBox(height: 12),
           const Center(
             child: Text(
-              "v1.3.0 • Ye Tracker",
+              "v1.4.0 • Ye Tracker",
               style: TextStyle(color: Colors.white24, fontSize: 12),
             ),
           ),

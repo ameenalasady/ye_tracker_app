@@ -59,7 +59,7 @@ class AutoDownloadNotifier extends StateNotifier<bool> {
   }
 }
 
-// NEW: Max Concurrent Downloads Provider
+// Max Concurrent Downloads Provider
 final maxConcurrentDownloadsProvider =
     StateNotifierProvider<MaxConcurrentNotifier, int>((ref) {
       return MaxConcurrentNotifier(ref);
@@ -81,6 +81,31 @@ class MaxConcurrentNotifier extends StateNotifier<int> {
     Hive.box('settings').put('max_concurrent_downloads', value);
     // Trigger queue check in case we increased the limit
     ref.read(downloadManagerProvider).retryQueue();
+  }
+}
+
+// --- NEW: Preload Count Provider ---
+final preloadCountProvider = StateNotifierProvider<PreloadCountNotifier, int>((
+  ref,
+) {
+  return PreloadCountNotifier();
+});
+
+class PreloadCountNotifier extends StateNotifier<int> {
+  PreloadCountNotifier() : super(1) {
+    _load();
+  }
+
+  void _load() {
+    final box = Hive.box('settings');
+    state = box.get('preload_count', defaultValue: 1);
+  }
+
+  void set(int value) {
+    if (value < 0) value = 0;
+    if (value > 10) value = 10; // Reasonable limit
+    state = value;
+    Hive.box('settings').put('preload_count', value);
   }
 }
 

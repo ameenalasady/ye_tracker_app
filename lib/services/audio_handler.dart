@@ -77,6 +77,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   }
 
   void _listenToPlaybackState() {
+    // 1. Current Index Changes
     _player.currentIndexStream.listen((index) {
       if (index != null && _playlist != null && index < _playlist!.length) {
         final source = _playlist!.children[index] as UriAudioSource;
@@ -84,20 +85,20 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
         mediaItem.add(item);
 
-        // Retrieve Track from our local cache using the ID
-        final track = _trackCache[item.id];
-
-        if (track != null) {
-          final autoDownload = Hive.box(
-            'settings',
-          ).get('auto_download', defaultValue: true);
-          if (autoDownload) {
-            downloadManager.downloadTrack(track);
-          }
-        }
+        // Trigger Preloading/Downloading logic
+        _schedulePreload();
       }
     });
 
+    // 2. Shuffle Mode Changes (Recalculate "next" songs)
+    _player.shuffleModeEnabledStream.listen((enabled) {
+      // Small delay to ensure just_audio updates effectiveIndices
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _schedulePreload();
+      });
+    });
+
+    // 3. Duration & Queue Updates
     _player.durationStream.listen((duration) {
       final currentItem = mediaItem.value;
       if (currentItem != null && duration != null) {
@@ -113,6 +114,64 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       }).toList();
       queue.add(newQueue);
     });
+  }
+
+  /// Calculates the next tracks in the queue (respecting shuffle)
+  /// and triggers downloads if Auto-Download is enabled.
+  void _schedulePreload() {
+    if (_playlist == null) return;
+
+    // 1. Get Settings
+    final settingsBox = Hive.box('settings');
+    final bool autoDownload = settingsBox.get('auto_download', defaultValue: true);
+    final int preloadCount = settingsBox.get('preload_count', defaultValue: 1);
+
+    // 2. Get Current State
+    final indices = _player.effectiveIndices; // This respects shuffle!
+    final currentIndex = _player.currentIndex;
+
+    if (indices == null || currentIndex == null) return;
+
+    // 3. Find current position in the effective list
+    final currentEffectivePos = indices.indexOf(currentIndex);
+    if (currentEffectivePos == -1) return;
+
+    // 4. Download Current Song (Priority)
+    if (autoDownload) {
+      _downloadByIndex(currentIndex);
+    }
+
+    // 5. Preload/Download Next Songs
+    for (int i = 1; i <= preloadCount; i++) {
+      // Check bounds
+      if (currentEffectivePos + i >= indices.length) break;
+
+      final nextIndex = indices[currentEffectivePos + i];
+
+      if (autoDownload) {
+         // If auto-download is ON, we save to disk.
+        _downloadByIndex(nextIndex);
+      } else {
+        // If auto-download is OFF, just_audio automatically buffers the
+        // immediate next item in the ConcatenatingAudioSource.
+        // We don't force a disk download here to respect the user's "No Download" setting,
+        // effectively treating "load in memory" as the player's native buffering.
+      }
+    }
+  }
+
+  void _downloadByIndex(int index) {
+    if (_playlist == null || index >= _playlist!.length) return;
+
+    final source = _playlist!.children[index] as UriAudioSource;
+    final item = source.tag as MediaItem;
+
+    // Retrieve Track from our local cache using the ID
+    final track = _trackCache[item.id];
+
+    if (track != null) {
+      downloadManager.downloadTrack(track);
+    }
   }
 
   @override
@@ -287,7 +346,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     // Also store by effectiveUrl to be safe for reverse lookups if needed
     _trackCache[track.effectiveUrl] = track;
 
-    // --- CHANGED: Use effectiveAlbumArt to check global store ---
+    // Use effectiveAlbumArt to check global store
     final artUrl = track.effectiveAlbumArt;
 
     return MediaItem(
