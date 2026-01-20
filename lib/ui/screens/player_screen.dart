@@ -459,11 +459,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 }
 
 // --- QUEUE SHEET COMPONENT ---
-class QueueSheet extends ConsumerWidget {
+class QueueSheet extends ConsumerStatefulWidget {
   const QueueSheet({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<QueueSheet> createState() => _QueueSheetState();
+}
+
+class _QueueSheetState extends ConsumerState<QueueSheet> {
+  // Track if we have performed the initial scroll to the current song
+  bool _initialScrollPerformed = false;
+
+  @override
+  Widget build(BuildContext context) {
     final queueAsync = ref.watch(queueProvider);
     final currentItemAsync = ref.watch(currentMediaItemProvider);
     final audioHandler = ref.watch(audioHandlerProvider);
@@ -545,6 +553,22 @@ class QueueSheet extends ConsumerWidget {
 
                     // Create the subset list
                     final visibleQueue = queue.sublist(startIndex, endIndex);
+
+                    // --- SCROLL TO CURRENT SONG LOGIC ---
+                    if (!_initialScrollPerformed && visibleQueue.isNotEmpty) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (scrollController.hasClients) {
+                          // Calculate where the current song is relative to the *visible* list
+                          final relativeIndex = currentIndex - startIndex;
+                          if (relativeIndex > 0) {
+                            // 72 is the height of the SizedBox/ListTile below
+                            final double offset = relativeIndex * 72.0;
+                            scrollController.jumpTo(offset);
+                          }
+                          _initialScrollPerformed = true;
+                        }
+                      });
+                    }
 
                     return ReorderableListView.builder(
                       scrollController: scrollController,
