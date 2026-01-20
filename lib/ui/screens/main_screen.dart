@@ -17,7 +17,6 @@ class MainScreen extends ConsumerStatefulWidget {
 }
 
 class _MainScreenState extends ConsumerState<MainScreen> {
-
   void _showPlaylistsSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -77,10 +76,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
             ],
           ),
           // --- Component: Mini Player ---
-          const Align(
-            alignment: Alignment.bottomCenter,
-            child: MiniPlayer(),
-          ),
+          const Align(alignment: Alignment.bottomCenter, child: MiniPlayer()),
         ],
       ),
     );

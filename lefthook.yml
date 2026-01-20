@@ -1,0 +1,15 @@
+# lefthook.yml
+pre-commit:
+  parallel: true
+  commands:
+    # 1. Format Code
+    format:
+      glob: "*.dart"
+      # Run dart format on staged files and re-add them to the commit
+      run: dart format {staged_files} && git add {staged_files}
+
+    # 2. Lint Code
+    analyze:
+      glob: "*.dart"
+      # Run static analysis on the entire project
+      run: flutter analyze

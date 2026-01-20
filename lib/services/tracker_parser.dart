@@ -19,12 +19,13 @@ class TrackerParser {
 
   Future<List<SheetTab>> fetchTabs() async {
     // PASS HEADERS HERE
-    final response = await http.get(
-      Uri.parse(_baseUrl),
-      headers: Track.imageHeaders,
-    ).timeout(const Duration(seconds: 15));
+    final response = await http
+        .get(Uri.parse(_baseUrl), headers: Track.imageHeaders)
+        .timeout(const Duration(seconds: 15));
 
-    if (response.statusCode != 200) throw Exception("Failed to load source: ${response.statusCode}");
+    if (response.statusCode != 200) {
+      throw Exception("Failed to load source: ${response.statusCode}");
+    }
 
     final tabList = <SheetTab>[];
     // Regex is faster than parsing full HTML for just these strings
@@ -35,13 +36,22 @@ class TrackerParser {
       final name = m.group(1)!;
       final gid = m.group(2)!;
       // Filter out utility tabs
-      if (!const ['Key', 'Template', 'Fakes', 'Stats', 'Updates', 'Links'].contains(name)) {
+      if (!const [
+        'Key',
+        'Template',
+        'Fakes',
+        'Stats',
+        'Updates',
+        'Links',
+      ].contains(name)) {
         if (!tabList.any((t) => t.gid == gid)) {
           tabList.add(SheetTab(name: name, gid: gid));
         }
       }
     }
-    if (tabList.isEmpty) { throw Exception("No tabs found. Check URL."); }
+    if (tabList.isEmpty) {
+      throw Exception("No tabs found. Check URL.");
+    }
     return tabList;
   }
 
@@ -50,10 +60,9 @@ class TrackerParser {
     debugPrint("Fetching: $url");
 
     // PASS HEADERS HERE
-    final response = await http.get(
-      Uri.parse(url),
-      headers: Track.imageHeaders,
-    ).timeout(const Duration(seconds: 20));
+    final response = await http
+        .get(Uri.parse(url), headers: Track.imageHeaders)
+        .timeout(const Duration(seconds: 20));
 
     if (response.statusCode != 200) throw Exception("Failed to load Tab HTML");
 
@@ -80,7 +89,9 @@ List<Track> _parseHtml(String htmlBody) {
     final texts = cells.map((e) => e.text.trim().toLowerCase()).toList();
 
     bool hasName = texts.contains('name');
-    bool hasLength = texts.any((t) => t.contains('length') || t.contains('duration'));
+    bool hasLength = texts.any(
+      (t) => t.contains('length') || t.contains('duration'),
+    );
 
     if (hasName && hasLength) {
       startRowIndex = i + 1;
@@ -88,20 +99,32 @@ List<Track> _parseHtml(String htmlBody) {
         final h = texts[c];
         if (h.contains('era')) {
           colMap['era'] = c;
-        } else if (h == 'name') { colMap['name'] = c; }
-        else if (h.contains('notes')) { colMap['notes'] = c; }
-        else if ((h.contains('length') || h.contains('time')) && !h.contains('available')) { colMap['length'] = c; }
-        else if (h == 'length') { colMap['length'] = c; }
-        else if (h.contains('release') || h.contains('date')) { colMap['date'] = c; }
-        else if (h.contains('type')) { colMap['type'] = c; }
-        else if (h.contains('streaming')) { colMap['streaming'] = c; }
-        else if (h.contains('link')) { colMap['link'] = c; }
+        } else if (h == 'name') {
+          colMap['name'] = c;
+        } else if (h.contains('notes')) {
+          colMap['notes'] = c;
+        } else if ((h.contains('length') || h.contains('time')) &&
+            !h.contains('available')) {
+          colMap['length'] = c;
+        } else if (h == 'length') {
+          colMap['length'] = c;
+        } else if (h.contains('release') || h.contains('date')) {
+          colMap['date'] = c;
+        } else if (h.contains('type')) {
+          colMap['type'] = c;
+        } else if (h.contains('streaming')) {
+          colMap['streaming'] = c;
+        } else if (h.contains('link')) {
+          colMap['link'] = c;
+        }
       }
       break;
     }
   }
 
-  if (!colMap.containsKey('name')) { return []; }
+  if (!colMap.containsKey('name')) {
+    return [];
+  }
 
   final List<Track> tracks = [];
   String lastEra = "";
@@ -132,12 +155,18 @@ List<Track> _parseHtml(String htmlBody) {
       }
     }
 
-    if (cells.length <= idxName) { continue; }
+    if (cells.length <= idxName) {
+      continue;
+    }
 
     String rawName = cells[idxName].text.trim();
-    if (rawName.isEmpty || rawName == "Name") { continue; }
+    if (rawName.isEmpty || rawName == "Name") {
+      continue;
+    }
 
-    String len = (idxLength > -1 && idxLength < cells.length) ? cells[idxLength].text.trim() : "";
+    String len = (idxLength > -1 && idxLength < cells.length)
+        ? cells[idxLength].text.trim()
+        : "";
 
     // CHANGED: Strictly skip if there is no duration/length
     if (len.isEmpty) continue;
@@ -174,21 +203,27 @@ List<Track> _parseHtml(String htmlBody) {
         title = parts.sublist(1).join(" - ").trim();
       }
     } else {
-      String type = (idxType > -1 && idxType < cells.length) ? cells[idxType].text.trim().toLowerCase() : "";
-      if (type == 'production') { artist = ""; }
+      String type = (idxType > -1 && idxType < cells.length)
+          ? cells[idxType].text.trim().toLowerCase()
+          : "";
+      if (type == 'production') {
+        artist = "";
+      }
     }
 
     // Clean Google Redirection Links
     if (lnk.isNotEmpty && lnk.contains('google.com/url')) {
       final match = regExpGoogle.firstMatch(lnk);
       if (match != null) {
-        try { lnk = Uri.decodeComponent(match.group(1)!); } catch (_) {}
+        try {
+          lnk = Uri.decodeComponent(match.group(1)!);
+        } catch (_) {}
       }
     }
 
     bool streaming = false;
     if (idxStreaming > -1 && idxStreaming < cells.length) {
-       streaming = cells[idxStreaming].text.trim().toLowerCase() == 'yes';
+      streaming = cells[idxStreaming].text.trim().toLowerCase() == 'yes';
     }
 
     tracks.add(
@@ -196,10 +231,16 @@ List<Track> _parseHtml(String htmlBody) {
         era: era,
         artist: artist,
         title: title,
-        notes: (idxNotes > -1 && idxNotes < cells.length) ? cells[idxNotes].text.trim() : "",
+        notes: (idxNotes > -1 && idxNotes < cells.length)
+            ? cells[idxNotes].text.trim()
+            : "",
         length: len,
-        releaseDate: (idxDate > -1 && idxDate < cells.length) ? cells[idxDate].text.trim() : "",
-        type: (idxType > -1 && idxType < cells.length) ? cells[idxType].text.trim() : "",
+        releaseDate: (idxDate > -1 && idxDate < cells.length)
+            ? cells[idxDate].text.trim()
+            : "",
+        type: (idxType > -1 && idxType < cells.length)
+            ? cells[idxType].text.trim()
+            : "",
         isStreaming: streaming,
         link: lnk,
         albumArtUrl: lastEraImage,

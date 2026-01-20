@@ -16,10 +16,12 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Make status bar transparent for immersive feel
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-  ));
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+    ),
+  );
 
   // Initialize Hive
   await Hive.initFlutter();
@@ -55,7 +57,9 @@ Future<void> main() async {
     ProviderScope(
       overrides: [
         audioHandlerProvider.overrideWithValue(audioHandler),
-        downloadManagerProvider.overrideWithValue(downloadManager), // Register here
+        downloadManagerProvider.overrideWithValue(
+          downloadManager,
+        ), // Register here
       ],
       child: const YeTrackerApp(),
     ),

@@ -28,7 +28,8 @@ class Track extends HiveObject {
   String? _searchIndex;
 
   static const Map<String, String> imageHeaders = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+    'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
     'Referer': 'https://docs.google.com/',
   };
 
@@ -85,7 +86,8 @@ class Track extends HiveObject {
       if (!length.contains(':')) return 0;
       final parts = length.split(':');
       if (parts.length == 2) {
-        return (int.tryParse(parts[0]) ?? 0) * 60 + (int.tryParse(parts[1]) ?? 0);
+        return (int.tryParse(parts[0]) ?? 0) * 60 +
+            (int.tryParse(parts[1]) ?? 0);
       } else if (parts.length == 3) {
         return (int.tryParse(parts[0]) ?? 0) * 3600 +
             (int.tryParse(parts[1]) ?? 0) * 60 +

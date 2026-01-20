@@ -14,7 +14,9 @@ class EraTabSelector extends ConsumerWidget {
       data: (tabs) {
         if (selectedTab == null && tabs.isNotEmpty) {
           // Set initial tab without rebuilding instantly
-          Future.microtask(() => ref.read(selectedTabProvider.notifier).state = tabs.first);
+          Future.microtask(
+            () => ref.read(selectedTabProvider.notifier).state = tabs.first,
+          );
           return const SizedBox(height: 40);
         }
         return SizedBox(
@@ -33,23 +35,33 @@ class EraTabSelector extends ConsumerWidget {
                   // Reset filters when changing tabs
                   ref.read(searchQueryProvider.notifier).state = "";
                   ref.read(selectedErasProvider.notifier).state = {};
-                  ref.read(sortOptionProvider.notifier).state = SortOption.defaultOrder;
+                  ref.read(sortOptionProvider.notifier).state =
+                      SortOption.defaultOrder;
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     gradient: isSelected
-                        ? const LinearGradient(colors: [Color(0xFFFF7E5F), Color(0xFFFF5252)])
-                        : const LinearGradient(colors: [Color(0xFF2A2A2A), Color(0xFF2A2A2A)]),
+                        ? const LinearGradient(
+                            colors: [Color(0xFFFF7E5F), Color(0xFFFF5252)],
+                          )
+                        : const LinearGradient(
+                            colors: [Color(0xFF2A2A2A), Color(0xFF2A2A2A)],
+                          ),
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: isSelected
                         ? [
                             BoxShadow(
-                              color: const Color(0xFFFF5252).withOpacity(0.4),
+                              color: const Color(
+                                0xFFFF5252,
+                              ).withValues(alpha: 0.4),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
-                            )
+                            ),
                           ]
                         : [],
                   ),
@@ -58,7 +70,9 @@ class EraTabSelector extends ConsumerWidget {
                       tab.name,
                       style: TextStyle(
                         color: isSelected ? Colors.white : Colors.white60,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.w500,
                         fontSize: 13,
                       ),
                     ),

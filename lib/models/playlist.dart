@@ -9,10 +9,7 @@ class Playlist extends HiveObject {
   @HiveField(1)
   List<Track> tracks;
 
-  Playlist({
-    required this.name,
-    required this.tracks,
-  });
+  Playlist({required this.name, required this.tracks});
 }
 
 class PlaylistAdapter extends TypeAdapter<Playlist> {

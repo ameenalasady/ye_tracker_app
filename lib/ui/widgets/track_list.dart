@@ -17,11 +17,18 @@ class TrackList extends ConsumerWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.graphic_eq, size: 64, color: Colors.white.withAlpha((0.1 * 255).toInt())),
+                Icon(
+                  Icons.graphic_eq,
+                  size: 64,
+                  color: Colors.white.withAlpha((0.1 * 255).toInt()),
+                ),
                 const SizedBox(height: 16),
                 Text(
                   "No tracks found",
-                  style: TextStyle(color: Colors.white.withAlpha((0.5 * 255).toInt()), fontSize: 16)
+                  style: TextStyle(
+                    color: Colors.white.withAlpha((0.5 * 255).toInt()),
+                    fontSize: 16,
+                  ),
                 ),
               ],
             ),
@@ -33,11 +40,16 @@ class TrackList extends ConsumerWidget {
           cacheExtent: 1000,
           // FIX: Dismiss keyboard when user drags the list
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: const EdgeInsets.only(top: 8, bottom: 120), // Bottom padding for MiniPlayer
+          padding: const EdgeInsets.only(
+            top: 8,
+            bottom: 120,
+          ), // Bottom padding for MiniPlayer
           itemBuilder: (context, index) => TrackTile(track: tracks[index]),
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFFFF5252))),
+      loading: () => const Center(
+        child: CircularProgressIndicator(color: Color(0xFFFF5252)),
+      ),
       error: (err, stack) => Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),

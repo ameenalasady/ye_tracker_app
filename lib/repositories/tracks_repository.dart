@@ -7,7 +7,8 @@ import '../services/tracker_parser.dart';
 class TracksRepository {
   final TrackerParser _parser;
 
-  TracksRepository({required String sourceUrl}) : _parser = TrackerParser(sourceUrl);
+  TracksRepository({required String sourceUrl})
+    : _parser = TrackerParser(sourceUrl);
 
   /// Fetches the list of tabs (Eras).
   /// Implemented Network-First, Cache-Fallback strategy.
@@ -73,8 +74,8 @@ class TracksRepository {
         // (Note: track.effectiveAlbumArt handles this dynamically, but saving it here
         // helps if we export the data later, though strictly not necessary with the getter)
         if (track.albumArtUrl.isEmpty) {
-           // We don't overwrite the field because it's final,
-           // but the UI will use the getter 'effectiveAlbumArt' which checks the box.
+          // We don't overwrite the field because it's final,
+          // but the UI will use the getter 'effectiveAlbumArt' which checks the box.
         }
       }
 

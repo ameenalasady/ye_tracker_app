@@ -16,7 +16,10 @@ class DownloadsScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        title: const Text("Downloads", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: const Text(
+          "Downloads",
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
           onPressed: () => Navigator.pop(context),
@@ -29,11 +32,18 @@ class DownloadsScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.download_done_rounded, size: 64, color: Colors.white.withOpacity(0.1)),
+                  Icon(
+                    Icons.download_done_rounded,
+                    size: 64,
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     "No active downloads",
-                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16)
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      fontSize: 16,
+                    ),
                   ),
                 ],
               ),
@@ -43,7 +53,7 @@ class DownloadsScreen extends ConsumerWidget {
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: tasks.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final task = tasks[index];
               return _DownloadItemTile(task: task);
@@ -51,7 +61,9 @@ class DownloadsScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text("Error: $err", style: const TextStyle(color: Colors.red))),
+        error: (err, stack) => Center(
+          child: Text("Error: $err", style: const TextStyle(color: Colors.red)),
+        ),
       ),
     );
   }
@@ -105,9 +117,10 @@ class _DownloadItemTile extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 40, height: 40,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.2),
+                  color: statusColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(statusIcon, color: statusColor, size: 20),
@@ -121,13 +134,19 @@ class _DownloadItemTile extends StatelessWidget {
                       task.track.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       task.track.artist,
                       maxLines: 1,
-                      style: const TextStyle(fontSize: 12, color: Colors.white54),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.white54,
+                      ),
                     ),
                   ],
                 ),
@@ -143,18 +162,21 @@ class _DownloadItemTile extends StatelessWidget {
               ),
             ],
           ),
-          if (task.status == DownloadStatus.downloading || task.status == DownloadStatus.connecting) ...[
+          if (task.status == DownloadStatus.downloading ||
+              task.status == DownloadStatus.connecting) ...[
             const SizedBox(height: 12),
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
-                value: task.status == DownloadStatus.connecting ? null : task.progress,
+                value: task.status == DownloadStatus.connecting
+                    ? null
+                    : task.progress,
                 backgroundColor: Colors.white10,
                 color: statusColor,
                 minHeight: 4,
               ),
             ),
-          ]
+          ],
         ],
       ),
     );

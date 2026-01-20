@@ -7,7 +7,14 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/track.dart';
 
-enum DownloadStatus { queued, connecting, downloading, completed, failed, canceled }
+enum DownloadStatus {
+  queued,
+  connecting,
+  downloading,
+  completed,
+  failed,
+  canceled,
+}
 
 class DownloadTask {
   final Track track;
@@ -34,15 +41,28 @@ class DownloadManager extends ChangeNotifier {
   List<DownloadTask> get tasks => UnmodifiableListView(_tasks);
 
   // Helper to check if a specific URL is in the list
-  bool isDownloading(String url) => _tasks.any((t) => t.id == url && t.status != DownloadStatus.completed && t.status != DownloadStatus.failed);
+  bool isDownloading(String url) => _tasks.any(
+    (t) =>
+        t.id == url &&
+        t.status != DownloadStatus.completed &&
+        t.status != DownloadStatus.failed,
+  );
 
   // Helper for TrackTiles to just check existence
   Set<String> get activeUrlSet => _tasks
-      .where((t) => t.status != DownloadStatus.completed && t.status != DownloadStatus.failed)
+      .where(
+        (t) =>
+            t.status != DownloadStatus.completed &&
+            t.status != DownloadStatus.failed,
+      )
       .map((t) => t.id)
       .toSet();
 
-  Future<void> downloadTrack(Track track, {VoidCallback? onSuccess, Function(String)? onError}) async {
+  Future<void> downloadTrack(
+    Track track, {
+    VoidCallback? onSuccess,
+    Function(String)? onError,
+  }) async {
     // 1. Validation
     if (track.effectiveUrl.isEmpty) {
       onError?.call("Invalid URL");
@@ -56,11 +76,13 @@ class DownloadManager extends ChangeNotifier {
     final downloadsBox = Hive.box('downloads');
     final existingPath = downloadsBox.get(track.effectiveUrl);
 
-    if (existingPath != null && existingPath is String && File(existingPath).existsSync()) {
-       track.localPath = existingPath;
-       if (track.isInBox) await track.save();
-       onSuccess?.call();
-       return;
+    if (existingPath != null &&
+        existingPath is String &&
+        File(existingPath).existsSync()) {
+      track.localPath = existingPath;
+      if (track.isInBox) await track.save();
+      onSuccess?.call();
+      return;
     }
 
     if (track.localPath.isNotEmpty && File(track.localPath).existsSync()) {
@@ -89,18 +111,27 @@ class DownloadManager extends ChangeNotifier {
   void _processQueue() async {
     // Get setting for concurrency
     final settingsBox = Hive.box('settings');
-    final int maxConcurrent = settingsBox.get('max_concurrent_downloads', defaultValue: 2);
+    final int maxConcurrent = settingsBox.get(
+      'max_concurrent_downloads',
+      defaultValue: 2,
+    );
 
     // Count how many are currently running
-    final runningCount = _tasks.where((t) =>
-      t.status == DownloadStatus.connecting || t.status == DownloadStatus.downloading
-    ).length;
+    final runningCount = _tasks
+        .where(
+          (t) =>
+              t.status == DownloadStatus.connecting ||
+              t.status == DownloadStatus.downloading,
+        )
+        .length;
 
     if (runningCount >= maxConcurrent) return;
 
     // Find next queued item
     try {
-      final nextTask = _tasks.firstWhere((t) => t.status == DownloadStatus.queued);
+      final nextTask = _tasks.firstWhere(
+        (t) => t.status == DownloadStatus.queued,
+      );
       _startDownload(nextTask);
 
       // If we still have room, recurse lightly to fill slots
@@ -119,7 +150,9 @@ class DownloadManager extends ChangeNotifier {
 
     try {
       final dir = await getApplicationDocumentsDirectory();
-      final safeName = task.track.displayName.replaceAll(RegExp(r'[^\w\s\.-]'), '').trim();
+      final safeName = task.track.displayName
+          .replaceAll(RegExp(r'[^\w\s\.-]'), '')
+          .trim();
       final savePath = '${dir.path}/$safeName.mp3';
 
       await _dio.download(

@@ -40,13 +40,18 @@ class PlaylistsSheet extends ConsumerWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("Your Playlists",
-                        style: TextStyle(
-                            fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+                    const Text(
+                      "Your Playlists",
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
                     IconButton(
                       icon: const Icon(Icons.add, color: Color(0xFFFF5252)),
                       onPressed: () => _createPlaylistDialog(context, ref),
-                    )
+                    ),
                   ],
                 ),
               ),
@@ -54,7 +59,11 @@ class PlaylistsSheet extends ConsumerWidget {
               Expanded(
                 child: playlists.isEmpty
                     ? const Center(
-                        child: Text("No playlists yet.", style: TextStyle(color: Colors.white54)))
+                        child: Text(
+                          "No playlists yet.",
+                          style: TextStyle(color: Colors.white54),
+                        ),
+                      )
                     : ListView.builder(
                         controller: scrollController,
                         itemCount: playlists.length,
@@ -65,24 +74,41 @@ class PlaylistsSheet extends ConsumerWidget {
                               width: 48,
                               height: 48,
                               decoration: BoxDecoration(
-                                  color: const Color(0xFF2A2A2A),
-                                  borderRadius: BorderRadius.circular(8)),
-                              child: const Icon(Icons.music_note, color: Colors.white24),
+                                color: const Color(0xFF2A2A2A),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.music_note,
+                                color: Colors.white24,
+                              ),
                             ),
-                            title: Text(playlist.name, style: const TextStyle(color: Colors.white)),
-                            subtitle: Text("${playlist.tracks.length} tracks",
-                                style: const TextStyle(color: Colors.white54)),
+                            title: Text(
+                              playlist.name,
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                            subtitle: Text(
+                              "${playlist.tracks.length} tracks",
+                              style: const TextStyle(color: Colors.white54),
+                            ),
                             trailing: IconButton(
-                              icon: const Icon(Icons.delete_outline, color: Colors.white30, size: 20),
-                              onPressed: () =>
-                                  ref.read(playlistsProvider.notifier).deletePlaylist(playlist),
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                color: Colors.white30,
+                                size: 20,
+                              ),
+                              onPressed: () => ref
+                                  .read(playlistsProvider.notifier)
+                                  .deletePlaylist(playlist),
                             ),
                             onTap: () {
                               Navigator.pop(context);
                               Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) => PlaylistDetailScreen(playlist: playlist)));
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      PlaylistDetailScreen(playlist: playlist),
+                                ),
+                              );
                             },
                           );
                         },
@@ -101,25 +127,38 @@ class PlaylistsSheet extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF252525),
-        title: const Text("New Playlist", style: TextStyle(color: Colors.white)),
+        title: const Text(
+          "New Playlist",
+          style: TextStyle(color: Colors.white),
+        ),
         content: TextField(
           controller: controller,
           style: const TextStyle(color: Colors.white),
           decoration: const InputDecoration(
-              hintText: "Playlist Name", hintStyle: TextStyle(color: Colors.grey)),
+            hintText: "Playlist Name",
+            hintStyle: TextStyle(color: Colors.grey),
+          ),
           autofocus: true,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel"),
+          ),
           TextButton(
             onPressed: () {
               if (controller.text.isNotEmpty) {
-                ref.read(playlistsProvider.notifier).createPlaylist(controller.text);
+                ref
+                    .read(playlistsProvider.notifier)
+                    .createPlaylist(controller.text);
                 Navigator.pop(ctx);
               }
             },
-            child: const Text("Create", style: TextStyle(color: Color(0xFFFF5252))),
-          )
+            child: const Text(
+              "Create",
+              style: TextStyle(color: Color(0xFFFF5252)),
+            ),
+          ),
         ],
       ),
     );

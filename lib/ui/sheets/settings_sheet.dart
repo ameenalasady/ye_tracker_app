@@ -16,7 +16,9 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
   @override
   void initState() {
     super.initState();
-    _sourceController = TextEditingController(text: ref.read(sourceUrlProvider));
+    _sourceController = TextEditingController(
+      text: ref.read(sourceUrlProvider),
+    );
   }
 
   @override
@@ -39,11 +41,15 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
       }
       ref.invalidate(cacheSizeProvider);
       if (mounted) {
-         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Library refreshed successfully")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Library refreshed successfully")),
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Refresh failed: $e")));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Refresh failed: $e")));
       }
     } finally {
       if (mounted) setState(() => _isRefreshing = false);
@@ -57,85 +63,179 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
     final maxConcurrent = ref.watch(maxConcurrentDownloadsProvider);
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+      padding: EdgeInsets.fromLTRB(
+        24,
+        24,
+        24,
+        MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Center(
             child: Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           ),
           const SizedBox(height: 24),
-          const Text("Settings", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+          const Text(
+            "Settings",
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
           const SizedBox(height: 24),
 
           // --- LIBRARY & STORAGE ---
-          const Text("Library & Storage", style: TextStyle(color: Color(0xFFFF5252), fontWeight: FontWeight.bold, fontSize: 13)),
+          const Text(
+            "Library & Storage",
+            style: TextStyle(
+              color: Color(0xFFFF5252),
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
           const SizedBox(height: 10),
           Container(
-            decoration: BoxDecoration(color: const Color(0xFF2A2A2A), borderRadius: BorderRadius.circular(16)),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2A2A2A),
+              borderRadius: BorderRadius.circular(16),
+            ),
             child: Column(
               children: [
                 ListTile(
                   leading: const Icon(Icons.sync_rounded, color: Colors.white),
-                  title: const Text("Refresh Library", style: TextStyle(color: Colors.white)),
-                  subtitle: const Text("Pull latest changes from tracker", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  title: const Text(
+                    "Refresh Library",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  subtitle: const Text(
+                    "Pull latest changes from tracker",
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
                   trailing: _isRefreshing
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF5252)))
-                      : const Icon(Icons.chevron_right_rounded, color: Colors.white54),
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFFFF5252),
+                          ),
+                        )
+                      : const Icon(
+                          Icons.chevron_right_rounded,
+                          color: Colors.white54,
+                        ),
                   onTap: _isRefreshing ? null : _refreshLibrary,
                 ),
-                Divider(height: 1, color: Colors.white.withOpacity(0.05)),
+                Divider(height: 1, color: Colors.white.withValues(alpha: 0.05)),
                 SwitchListTile(
                   value: autoDownload,
                   activeThumbColor: const Color(0xFFFF5252),
-                  title: const Text("Auto-Download on Play", style: TextStyle(color: Colors.white)),
-                  subtitle: const Text("Automatically save songs when you play them", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  title: const Text(
+                    "Auto-Download on Play",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  subtitle: const Text(
+                    "Automatically save songs when you play them",
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
                   onChanged: (val) {
                     ref.read(autoDownloadProvider.notifier).set(val);
                   },
                 ),
-                Divider(height: 1, color: Colors.white.withOpacity(0.05)),
+                Divider(height: 1, color: Colors.white.withValues(alpha: 0.05)),
                 ListTile(
-                  title: const Text("Concurrent Downloads", style: TextStyle(color: Colors.white)),
-                  subtitle: Text("Limit simultaneous downloads (Currently: $maxConcurrent)", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                  title: const Text(
+                    "Concurrent Downloads",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  subtitle: Text(
+                    "Limit simultaneous downloads (Currently: $maxConcurrent)",
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.remove_circle_outline, color: Colors.white54),
+                        icon: const Icon(
+                          Icons.remove_circle_outline,
+                          color: Colors.white54,
+                        ),
                         onPressed: maxConcurrent > 1
-                            ? () => ref.read(maxConcurrentDownloadsProvider.notifier).set(maxConcurrent - 1)
+                            ? () => ref
+                                  .read(maxConcurrentDownloadsProvider.notifier)
+                                  .set(maxConcurrent - 1)
                             : null,
                       ),
-                      Text("$maxConcurrent", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      Text(
+                        "$maxConcurrent",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       IconButton(
-                        icon: const Icon(Icons.add_circle_outline, color: Colors.white54),
+                        icon: const Icon(
+                          Icons.add_circle_outline,
+                          color: Colors.white54,
+                        ),
                         onPressed: maxConcurrent < 5
-                            ? () => ref.read(maxConcurrentDownloadsProvider.notifier).set(maxConcurrent + 1)
+                            ? () => ref
+                                  .read(maxConcurrentDownloadsProvider.notifier)
+                                  .set(maxConcurrent + 1)
                             : null,
                       ),
                     ],
                   ),
                 ),
-                Divider(height: 1, color: Colors.white.withOpacity(0.05)),
+                Divider(height: 1, color: Colors.white.withValues(alpha: 0.05)),
                 ListTile(
-                  title: const Text("Clear Cache", style: TextStyle(color: Colors.white)),
-                  subtitle: Text("Frees up space (Currently used: ${cacheSizeAsync.value ?? 'Calculating...'})", style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                  trailing: const Icon(Icons.delete_outline, color: Colors.white54),
+                  title: const Text(
+                    "Clear Cache",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  subtitle: Text(
+                    "Frees up space (Currently used: ${cacheSizeAsync.value ?? 'Calculating...'})",
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                  trailing: const Icon(
+                    Icons.delete_outline,
+                    color: Colors.white54,
+                  ),
                   onTap: () async {
                     final confirm = await showDialog<bool>(
                       context: context,
                       builder: (c) => AlertDialog(
                         backgroundColor: const Color(0xFF252525),
-                        title: const Text("Clear Cache?", style: TextStyle(color: Colors.white)),
-                        content: const Text("This will delete all downloaded songs.", style: TextStyle(color: Colors.white70)),
+                        title: const Text(
+                          "Clear Cache?",
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        content: const Text(
+                          "This will delete all downloaded songs.",
+                          style: TextStyle(color: Colors.white70),
+                        ),
                         actions: [
-                          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text("Cancel")),
-                          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text("Delete", style: TextStyle(color: Color(0xFFFF5252)))),
+                          TextButton(
+                            onPressed: () => Navigator.pop(c, false),
+                            child: const Text("Cancel"),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(c, true),
+                            child: const Text(
+                              "Delete",
+                              style: TextStyle(color: Color(0xFFFF5252)),
+                            ),
+                          ),
                         ],
                       ),
                     );
@@ -145,7 +245,9 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                       ref.invalidate(cacheSizeProvider);
                       ref.invalidate(tracksProvider);
                       if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Cache cleared")));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Cache cleared")),
+                        );
                       }
                     }
                   },
@@ -157,11 +259,21 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
           const SizedBox(height: 24),
 
           // --- DATA SOURCE ---
-          const Text("Data Source", style: TextStyle(color: Color(0xFFFF5252), fontWeight: FontWeight.bold, fontSize: 13)),
+          const Text(
+            "Data Source",
+            style: TextStyle(
+              color: Color(0xFFFF5252),
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(color: const Color(0xFF2A2A2A), borderRadius: BorderRadius.circular(16)),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2A2A2A),
+              borderRadius: BorderRadius.circular(16),
+            ),
             child: Row(
               children: [
                 Expanded(
@@ -177,17 +289,26 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                 ),
                 TextButton(
                   onPressed: () {
-                    ref.read(sourceUrlProvider.notifier).state = _sourceController.text;
+                    ref.read(sourceUrlProvider.notifier).state =
+                        _sourceController.text;
                     ref.invalidate(tabsProvider);
                     Navigator.pop(context);
                   },
-                  child: const Text("Save", style: TextStyle(color: Color(0xFFFF5252))),
-                )
+                  child: const Text(
+                    "Save",
+                    style: TextStyle(color: Color(0xFFFF5252)),
+                  ),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 12),
-          const Center(child: Text("v1.3.0 • Ye Tracker", style: TextStyle(color: Colors.white24, fontSize: 12))),
+          const Center(
+            child: Text(
+              "v1.3.0 • Ye Tracker",
+              style: TextStyle(color: Colors.white24, fontSize: 12),
+            ),
+          ),
         ],
       ),
     );

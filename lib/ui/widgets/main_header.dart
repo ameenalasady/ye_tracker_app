@@ -43,7 +43,8 @@ class _MainHeaderState extends ConsumerState<MainHeader> {
     final currentSort = ref.watch(sortOptionProvider);
     final activeDownloads = ref.watch(activeDownloadsProvider).value ?? {};
 
-    final isFilterActive = activeEras.isNotEmpty || currentSort != SortOption.defaultOrder;
+    final isFilterActive =
+        activeEras.isNotEmpty || currentSort != SortOption.defaultOrder;
 
     ref.listen(searchQueryProvider, (previous, next) {
       if (next.isEmpty && _searchController.text.isNotEmpty) {
@@ -74,9 +75,17 @@ class _MainHeaderState extends ConsumerState<MainHeader> {
                   Stack(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.download_rounded, color: Colors.white54),
+                        icon: const Icon(
+                          Icons.download_rounded,
+                          color: Colors.white54,
+                        ),
                         onPressed: () {
-                           Navigator.push(context, MaterialPageRoute(builder: (_) => const DownloadsScreen()));
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const DownloadsScreen(),
+                            ),
+                          );
                         },
                       ),
                       if (activeDownloads.isNotEmpty)
@@ -95,7 +104,10 @@ class _MainHeaderState extends ConsumerState<MainHeader> {
                     ],
                   ),
                   IconButton(
-                    icon: const Icon(Icons.library_music_rounded, color: Colors.white54),
+                    icon: const Icon(
+                      Icons.library_music_rounded,
+                      color: Colors.white54,
+                    ),
                     onPressed: widget.onPlaylistsTap,
                   ),
                   Stack(
@@ -103,7 +115,9 @@ class _MainHeaderState extends ConsumerState<MainHeader> {
                       IconButton(
                         icon: Icon(
                           Icons.filter_list_rounded,
-                          color: isFilterActive ? const Color(0xFFFF5252) : Colors.white54,
+                          color: isFilterActive
+                              ? const Color(0xFFFF5252)
+                              : Colors.white54,
                         ),
                         onPressed: widget.onFilterTap,
                       ),
@@ -123,11 +137,14 @@ class _MainHeaderState extends ConsumerState<MainHeader> {
                     ],
                   ),
                   IconButton(
-                    icon: const Icon(Icons.settings_rounded, color: Colors.white54),
+                    icon: const Icon(
+                      Icons.settings_rounded,
+                      color: Colors.white54,
+                    ),
                     onPressed: widget.onSettingsTap,
                   ),
                 ],
-              )
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -136,7 +153,7 @@ class _MainHeaderState extends ConsumerState<MainHeader> {
             decoration: BoxDecoration(
               color: const Color(0xFF252525),
               borderRadius: BorderRadius.circular(15),
-              border: Border.all(color: Colors.white.withOpacity(0.05)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
             ),
             child: TextField(
               controller: _searchController,
@@ -144,11 +161,20 @@ class _MainHeaderState extends ConsumerState<MainHeader> {
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: "Search tracks...",
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                prefixIcon: Icon(Icons.search_rounded, color: Colors.white.withOpacity(0.3)),
+                hintStyle: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.3),
+                ),
+                prefixIcon: Icon(
+                  Icons.search_rounded,
+                  color: Colors.white.withValues(alpha: 0.3),
+                ),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.close_rounded, size: 18, color: Colors.white54),
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          size: 18,
+                          color: Colors.white54,
+                        ),
                         onPressed: () {
                           _searchController.clear();
                           _searchFocusNode.unfocus();
@@ -159,7 +185,8 @@ class _MainHeaderState extends ConsumerState<MainHeader> {
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
-              onChanged: (val) => ref.read(searchQueryProvider.notifier).state = val,
+              onChanged: (val) =>
+                  ref.read(searchQueryProvider.notifier).state = val,
             ),
           ),
         ],

@@ -27,7 +27,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       context: context,
       backgroundColor: const Color(0xFF1E1E1E),
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) => const QueueSheet(),
     );
   }
@@ -36,7 +38,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E1E1E),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) {
         final playlists = ref.watch(playlistsProvider);
         return Container(
@@ -44,25 +48,45 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text("Add to Playlist", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+              const Text(
+                "Add to Playlist",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
               const SizedBox(height: 16),
               if (playlists.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(16.0),
-                  child: Text("No playlists created yet. Go to Library to create one.", style: TextStyle(color: Colors.white54)),
+                  child: Text(
+                    "No playlists created yet. Go to Library to create one.",
+                    style: TextStyle(color: Colors.white54),
+                  ),
                 )
               else
-                ...playlists.map((playlist) => ListTile(
-                  leading: const Icon(Icons.playlist_add, color: Colors.white54),
-                  title: Text(playlist.name, style: const TextStyle(color: Colors.white)),
-                  onTap: () {
-                    ref.read(playlistsProvider.notifier).addTrackToPlaylist(playlist, track);
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Added to ${playlist.name}")),
-                    );
-                  },
-                )),
+                ...playlists.map(
+                  (playlist) => ListTile(
+                    leading: const Icon(
+                      Icons.playlist_add,
+                      color: Colors.white54,
+                    ),
+                    title: Text(
+                      playlist.name,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    onTap: () {
+                      ref
+                          .read(playlistsProvider.notifier)
+                          .addTrackToPlaylist(playlist, track);
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Added to ${playlist.name}")),
+                      );
+                    },
+                  ),
+                ),
             ],
           ),
         );
@@ -109,7 +133,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   fit: BoxFit.cover,
                   colorFilter: ColorFilter.mode(
                     Colors.black.withValues(alpha: 0.8),
-                    BlendMode.darken
+                    BlendMode.darken,
                   ),
                 )
               : null,
@@ -119,12 +143,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             children: [
               // --- HEADER ---
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 32),
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: Colors.white,
+                        size: 32,
+                      ),
                       onPressed: () => Navigator.pop(context),
                     ),
                     const Text(
@@ -137,7 +168,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.playlist_add_rounded, color: Colors.white),
+                      icon: const Icon(
+                        Icons.playlist_add_rounded,
+                        color: Colors.white,
+                      ),
                       onPressed: currentTrack != null
                           ? () => _showAddToPlaylistSheet(context, currentTrack)
                           : null,
@@ -172,13 +206,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             imageUrl: mediaItem.artUri.toString(),
                             httpHeaders: Track.imageHeaders,
                             fit: BoxFit.cover,
-                            errorWidget: (ctx, _, __) => const Center(
-                              child: Icon(Icons.music_note_rounded, size: 120, color: Colors.white12),
+                            errorWidget: (ctx, _, _) => const Center(
+                              child: Icon(
+                                Icons.music_note_rounded,
+                                size: 120,
+                                color: Colors.white12,
+                              ),
                             ),
                           ),
                         )
                       : const Center(
-                          child: Icon(Icons.music_note_rounded, size: 120, color: Colors.white12),
+                          child: Icon(
+                            Icons.music_note_rounded,
+                            size: 120,
+                            color: Colors.white12,
+                          ),
                         ),
                 ),
               ),
@@ -227,7 +269,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   final position = snapshot.data ?? Duration.zero;
                   final duration = mediaItem.duration ?? Duration.zero;
 
-                  double sliderValue = (_dragValue ?? position.inMilliseconds.toDouble());
+                  double sliderValue =
+                      (_dragValue ?? position.inMilliseconds.toDouble());
                   double max = duration.inMilliseconds.toDouble();
 
                   if (max <= 0) max = 1.0;
@@ -244,17 +287,25 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             inactiveTrackColor: Colors.white12,
                             thumbColor: Colors.white,
                             trackHeight: 4,
-                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                            overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+                            thumbShape: const RoundSliderThumbShape(
+                              enabledThumbRadius: 6,
+                            ),
+                            overlayShape: const RoundSliderOverlayShape(
+                              overlayRadius: 14,
+                            ),
                           ),
                           child: Slider(
                             min: 0,
                             max: max,
                             value: sliderValue,
-                            onChangeStart: (value) => setState(() => _dragValue = value),
-                            onChanged: (value) => setState(() => _dragValue = value),
+                            onChangeStart: (value) =>
+                                setState(() => _dragValue = value),
+                            onChanged: (value) =>
+                                setState(() => _dragValue = value),
                             onChangeEnd: (value) {
-                              audioHandler.seek(Duration(milliseconds: value.toInt()));
+                              audioHandler.seek(
+                                Duration(milliseconds: value.toInt()),
+                              );
                               setState(() => _dragValue = null);
                             },
                           ),
@@ -264,10 +315,22 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(_formatDuration(Duration(milliseconds: sliderValue.toInt())),
-                                  style: const TextStyle(color: Colors.white38, fontSize: 12)),
-                              Text(_formatDuration(duration),
-                                  style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                              Text(
+                                _formatDuration(
+                                  Duration(milliseconds: sliderValue.toInt()),
+                                ),
+                                style: const TextStyle(
+                                  color: Colors.white38,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              Text(
+                                _formatDuration(duration),
+                                style: const TextStyle(
+                                  color: Colors.white38,
+                                  fontSize: 12,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -285,10 +348,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 children: [
                   // SHUFFLE BUTTON
                   IconButton(
-                    icon: Icon(Icons.shuffle_rounded,
+                    icon: Icon(
+                      Icons.shuffle_rounded,
                       color: shuffleMode == AudioServiceShuffleMode.all
                           ? const Color(0xFFFF5252)
-                          : Colors.white54
+                          : Colors.white54,
                     ),
                     onPressed: () {
                       final newMode = shuffleMode == AudioServiceShuffleMode.all
@@ -299,11 +363,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   ),
                   IconButton(
                     iconSize: 36,
-                    icon: const Icon(Icons.skip_previous_rounded, color: Colors.white),
+                    icon: const Icon(
+                      Icons.skip_previous_rounded,
+                      color: Colors.white,
+                    ),
                     onPressed: () => audioHandler.skipToPrevious(),
                   ),
                   Container(
-                    width: 72, height: 72,
+                    width: 72,
+                    height: 72,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: LinearGradient(
@@ -311,17 +379,32 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      boxShadow: [BoxShadow(color: Color(0x66FF5252), blurRadius: 20, offset: Offset(0, 8))],
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0x66FF5252),
+                          blurRadius: 20,
+                          offset: Offset(0, 8),
+                        ),
+                      ],
                     ),
                     child: IconButton(
                       iconSize: 32,
-                      icon: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded, color: Colors.black87),
-                      onPressed: () => playing ? audioHandler.pause() : audioHandler.play(),
+                      icon: Icon(
+                        playing
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
+                        color: Colors.black87,
+                      ),
+                      onPressed: () =>
+                          playing ? audioHandler.pause() : audioHandler.play(),
                     ),
                   ),
                   IconButton(
                     iconSize: 36,
-                    icon: const Icon(Icons.skip_next_rounded, color: Colors.white),
+                    icon: const Icon(
+                      Icons.skip_next_rounded,
+                      color: Colors.white,
+                    ),
                     onPressed: () => audioHandler.skipToNext(),
                   ),
                   // LOOP BUTTON
@@ -332,14 +415,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                           : Icons.repeat_rounded,
                       color: repeatMode == AudioServiceRepeatMode.none
                           ? Colors.white54
-                          : const Color(0xFFFF5252)
+                          : const Color(0xFFFF5252),
                     ),
                     onPressed: () {
                       final nextMode = switch (repeatMode) {
-                         AudioServiceRepeatMode.none => AudioServiceRepeatMode.all,
-                         AudioServiceRepeatMode.all => AudioServiceRepeatMode.one,
-                         AudioServiceRepeatMode.one => AudioServiceRepeatMode.none,
-                         _ => AudioServiceRepeatMode.none,
+                        AudioServiceRepeatMode.none =>
+                          AudioServiceRepeatMode.all,
+                        AudioServiceRepeatMode.all =>
+                          AudioServiceRepeatMode.one,
+                        AudioServiceRepeatMode.one =>
+                          AudioServiceRepeatMode.none,
+                        _ => AudioServiceRepeatMode.none,
                       };
                       audioHandler.setRepeatMode(nextMode);
                     },
@@ -354,8 +440,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 padding: const EdgeInsets.only(bottom: 20.0),
                 child: TextButton.icon(
                   onPressed: () => _showQueueSheet(context),
-                  icon: const Icon(Icons.queue_music_rounded, color: Colors.white54),
-                  label: const Text("Up Next", style: TextStyle(color: Colors.white54)),
+                  icon: const Icon(
+                    Icons.queue_music_rounded,
+                    color: Colors.white54,
+                  ),
+                  label: const Text(
+                    "Up Next",
+                    style: TextStyle(color: Colors.white54),
+                  ),
                 ),
               ),
             ],
@@ -392,24 +484,44 @@ class QueueSheet extends ConsumerWidget {
               const SizedBox(height: 12),
               Center(
                 child: Container(
-                  width: 40, height: 4,
-                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
-              const Text("Up Next", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              const Text(
+                "Up Next",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
               const SizedBox(height: 12),
               Expanded(
                 child: queueAsync.when(
                   data: (queue) {
-                    if (queue.isEmpty) return const Center(child: Text("Queue is empty", style: TextStyle(color: Colors.white54)));
+                    if (queue.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          "Queue is empty",
+                          style: TextStyle(color: Colors.white54),
+                        ),
+                      );
+                    }
 
                     final currentId = currentItemAsync.value?.id;
                     int currentIndex = -1;
 
                     // Find index of current song
                     if (currentId != null) {
-                      currentIndex = queue.indexWhere((item) => item.id == currentId);
+                      currentIndex = queue.indexWhere(
+                        (item) => item.id == currentId,
+                      );
                     }
                     if (currentIndex == -1 && queue.isNotEmpty) {
                       currentIndex = 0;
@@ -418,11 +530,18 @@ class QueueSheet extends ConsumerWidget {
                     // --- WINDOWING LOGIC ---
                     // Load 10 before and 10 after
                     final int startOffset = 10;
-                    final int endOffset = 11; // +1 to include the item itself in the range calculation logic
+                    final int endOffset =
+                        11; // +1 to include the item itself in the range calculation logic
 
                     // Calculate bounds safely
-                    final int startIndex = (currentIndex - startOffset).clamp(0, queue.length);
-                    final int endIndex = (currentIndex + endOffset).clamp(0, queue.length);
+                    final int startIndex = (currentIndex - startOffset).clamp(
+                      0,
+                      queue.length,
+                    );
+                    final int endIndex = (currentIndex + endOffset).clamp(
+                      0,
+                      queue.length,
+                    );
 
                     // Create the subset list
                     final visibleQueue = queue.sublist(startIndex, endIndex);
@@ -442,7 +561,9 @@ class QueueSheet extends ConsumerWidget {
                         final globalOldIndex = startIndex + oldIndex;
                         final globalNewIndex = startIndex + newIndex;
 
-                        ref.read(audioHandlerProvider).moveQueueItem(globalOldIndex, globalNewIndex);
+                        ref
+                            .read(audioHandlerProvider)
+                            .moveQueueItem(globalOldIndex, globalNewIndex);
                       },
                       itemBuilder: (context, index) {
                         final item = visibleQueue[index];
@@ -452,7 +573,15 @@ class QueueSheet extends ConsumerWidget {
 
                         return Dismissible(
                           key: Key("${item.id}_$globalIndex"),
-                          background: Container(color: Colors.red, alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 20), child: const Icon(Icons.delete, color: Colors.white)),
+                          background: Container(
+                            color: Colors.red,
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.only(right: 20),
+                            child: const Icon(
+                              Icons.delete,
+                              color: Colors.white,
+                            ),
+                          ),
                           direction: DismissDirection.endToStart,
                           onDismissed: (_) {
                             audioHandler.removeQueueItemAt(globalIndex);
@@ -462,21 +591,47 @@ class QueueSheet extends ConsumerWidget {
                             child: ListTile(
                               key: ValueKey("${item.id}_$globalIndex"),
                               leading: Container(
-                                width: 40, height: 40,
+                                width: 40,
+                                height: 40,
                                 decoration: BoxDecoration(
-                                  color: isPlaying ? const Color(0xFFFF5252).withValues(alpha: 0.2) : const Color(0xFF2A2A2A),
+                                  color: isPlaying
+                                      ? const Color(
+                                          0xFFFF5252,
+                                        ).withValues(alpha: 0.2)
+                                      : const Color(0xFF2A2A2A),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: isPlaying
-                                  ? const Icon(Icons.graphic_eq, color: Color(0xFFFF5252))
-                                  : const Icon(Icons.music_note, color: Colors.white24),
+                                    ? const Icon(
+                                        Icons.graphic_eq,
+                                        color: Color(0xFFFF5252),
+                                      )
+                                    : const Icon(
+                                        Icons.music_note,
+                                        color: Colors.white24,
+                                      ),
                               ),
-                              title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                style: TextStyle(color: isPlaying ? const Color(0xFFFF5252) : Colors.white)),
-                              subtitle: Text(item.artist ?? "", maxLines: 1, style: const TextStyle(color: Colors.white54)),
+                              title: Text(
+                                item.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: isPlaying
+                                      ? const Color(0xFFFF5252)
+                                      : Colors.white,
+                                ),
+                              ),
+                              subtitle: Text(
+                                item.artist ?? "",
+                                maxLines: 1,
+                                style: const TextStyle(color: Colors.white54),
+                              ),
                               trailing: ReorderableDragStartListener(
                                 index: index,
-                                child: const Icon(Icons.drag_handle_rounded, color: Colors.white24),
+                                child: const Icon(
+                                  Icons.drag_handle_rounded,
+                                  color: Colors.white24,
+                                ),
                               ),
                               onTap: () {
                                 audioHandler.skipToQueueItem(globalIndex);
@@ -487,8 +642,9 @@ class QueueSheet extends ConsumerWidget {
                       },
                     );
                   },
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (_,__) => const SizedBox(),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (_, _) => const SizedBox(),
                 ),
               ),
             ],

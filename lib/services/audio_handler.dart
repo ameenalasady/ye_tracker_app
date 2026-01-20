@@ -42,35 +42,37 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         MediaControl.skipToNext,
       ];
 
-      playbackState.add(playbackState.value.copyWith(
-        controls: controls,
-        androidCompactActionIndices: const [0, 1, 2],
-        systemActions: const {
-          MediaAction.seek,
-          MediaAction.seekForward,
-          MediaAction.seekBackward,
-        },
-        processingState: const {
-          ProcessingState.idle: AudioProcessingState.idle,
-          ProcessingState.loading: AudioProcessingState.loading,
-          ProcessingState.buffering: AudioProcessingState.buffering,
-          ProcessingState.ready: AudioProcessingState.ready,
-          ProcessingState.completed: AudioProcessingState.completed,
-        }[_player.processingState]!,
-        playing: playing,
-        updatePosition: _player.position,
-        bufferedPosition: _player.bufferedPosition,
-        speed: _player.speed,
-        queueIndex: event.currentIndex,
-        shuffleMode: _player.shuffleModeEnabled
-            ? AudioServiceShuffleMode.all
-            : AudioServiceShuffleMode.none,
-        repeatMode: const {
-          LoopMode.off: AudioServiceRepeatMode.none,
-          LoopMode.one: AudioServiceRepeatMode.one,
-          LoopMode.all: AudioServiceRepeatMode.all,
-        }[_player.loopMode]!,
-      ));
+      playbackState.add(
+        playbackState.value.copyWith(
+          controls: controls,
+          androidCompactActionIndices: const [0, 1, 2],
+          systemActions: const {
+            MediaAction.seek,
+            MediaAction.seekForward,
+            MediaAction.seekBackward,
+          },
+          processingState: const {
+            ProcessingState.idle: AudioProcessingState.idle,
+            ProcessingState.loading: AudioProcessingState.loading,
+            ProcessingState.buffering: AudioProcessingState.buffering,
+            ProcessingState.ready: AudioProcessingState.ready,
+            ProcessingState.completed: AudioProcessingState.completed,
+          }[_player.processingState]!,
+          playing: playing,
+          updatePosition: _player.position,
+          bufferedPosition: _player.bufferedPosition,
+          speed: _player.speed,
+          queueIndex: event.currentIndex,
+          shuffleMode: _player.shuffleModeEnabled
+              ? AudioServiceShuffleMode.all
+              : AudioServiceShuffleMode.none,
+          repeatMode: const {
+            LoopMode.off: AudioServiceRepeatMode.none,
+            LoopMode.one: AudioServiceRepeatMode.one,
+            LoopMode.all: AudioServiceRepeatMode.all,
+          }[_player.loopMode]!,
+        ),
+      );
     });
   }
 
@@ -86,9 +88,11 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         final track = _trackCache[item.id];
 
         if (track != null) {
-          final autoDownload = Hive.box('settings').get('auto_download', defaultValue: true);
+          final autoDownload = Hive.box(
+            'settings',
+          ).get('auto_download', defaultValue: true);
           if (autoDownload) {
-             downloadManager.downloadTrack(track);
+            downloadManager.downloadTrack(track);
           }
         }
       }
@@ -134,7 +138,9 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     if (index >= 0 && index < queue.value.length) {
       final targetItem = queue.value[index];
       if (_playlist != null) {
-        final rawIndex = _playlist!.children.indexWhere((s) => (s as UriAudioSource).tag == targetItem);
+        final rawIndex = _playlist!.children.indexWhere(
+          (s) => (s as UriAudioSource).tag == targetItem,
+        );
         if (rawIndex != -1) {
           _player.seek(Duration.zero, index: rawIndex);
           mediaItem.add(targetItem);
@@ -151,10 +157,12 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     }
     await _player.setShuffleModeEnabled(enabled);
 
-    playbackState.add(playbackState.value.copyWith(
-      shuffleMode: shuffleMode,
-      updatePosition: _player.position,
-    ));
+    playbackState.add(
+      playbackState.value.copyWith(
+        shuffleMode: shuffleMode,
+        updatePosition: _player.position,
+      ),
+    );
   }
 
   @override
@@ -166,10 +174,12 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     }[repeatMode]!;
     await _player.setLoopMode(loopMode);
 
-    playbackState.add(playbackState.value.copyWith(
-      repeatMode: repeatMode,
-      updatePosition: _player.position,
-    ));
+    playbackState.add(
+      playbackState.value.copyWith(
+        repeatMode: repeatMode,
+        updatePosition: _player.position,
+      ),
+    );
   }
 
   @override
@@ -182,7 +192,9 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   Future<void> removeQueueItemAt(int index) async {
     if (_playlist != null && index < queue.value.length) {
       final targetItem = queue.value[index];
-      final rawIndex = _playlist!.children.indexWhere((s) => (s as UriAudioSource).tag == targetItem);
+      final rawIndex = _playlist!.children.indexWhere(
+        (s) => (s as UriAudioSource).tag == targetItem,
+      );
       if (rawIndex != -1) {
         await _playlist!.removeAt(rawIndex);
       }
@@ -214,10 +226,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     _playlist = ConcatenatingAudioSource(children: audioSources);
 
     try {
-      await _player.setAudioSource(
-        _playlist!,
-        initialIndex: initialIndex,
-      );
+      await _player.setAudioSource(_playlist!, initialIndex: initialIndex);
       play();
     } catch (e) {
       debugPrint("Error playing playlist: $e");
@@ -240,7 +249,8 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     String uri = track.effectiveUrl;
 
     // 1. Check Local Object
-    bool isLocal = track.localPath.isNotEmpty && File(track.localPath).existsSync();
+    bool isLocal =
+        track.localPath.isNotEmpty && File(track.localPath).existsSync();
 
     // 2. Fallback: Check Global Registry
     if (!isLocal) {
@@ -254,10 +264,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       uri = track.localPath;
     }
 
-    return AudioSource.uri(
-      isLocal ? Uri.file(uri) : Uri.parse(uri),
-      tag: item
-    );
+    return AudioSource.uri(isLocal ? Uri.file(uri) : Uri.parse(uri), tag: item);
   }
 
   MediaItem _createMediaItem(Track track) {
@@ -286,7 +293,9 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     return MediaItem(
       id: uri,
       title: track.title,
-      artist: track.artist.isEmpty ? (track.era.isNotEmpty ? track.era : "Ye Tracker") : track.artist,
+      artist: track.artist.isEmpty
+          ? (track.era.isNotEmpty ? track.era : "Ye Tracker")
+          : track.artist,
       artUri: artUrl.isNotEmpty ? Uri.tryParse(artUrl) : null,
       extras: null,
     );

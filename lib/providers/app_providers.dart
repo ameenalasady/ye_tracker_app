@@ -2,7 +2,6 @@ import 'dart:io';
 import 'dart:async';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -23,21 +22,37 @@ final tracksRepositoryProvider = Provider<TracksRepository>((ref) {
 });
 
 // --- SORTING & FILTERING ---
-enum SortOption { defaultOrder, newest, oldest, nameAz, nameZa, shortest, longest }
-final sortOptionProvider = StateProvider<SortOption>((ref) => SortOption.defaultOrder);
+enum SortOption {
+  defaultOrder,
+  newest,
+  oldest,
+  nameAz,
+  nameZa,
+  shortest,
+  longest,
+}
+
+final sortOptionProvider = StateProvider<SortOption>(
+  (ref) => SortOption.defaultOrder,
+);
 final selectedErasProvider = StateProvider<Set<String>>((ref) => {});
 
 // --- SETTINGS PROVIDERS ---
-final autoDownloadProvider = StateNotifierProvider<AutoDownloadNotifier, bool>((ref) {
+final autoDownloadProvider = StateNotifierProvider<AutoDownloadNotifier, bool>((
+  ref,
+) {
   return AutoDownloadNotifier();
 });
 
 class AutoDownloadNotifier extends StateNotifier<bool> {
-  AutoDownloadNotifier() : super(true) { _load(); }
+  AutoDownloadNotifier() : super(true) {
+    _load();
+  }
   void _load() {
     final box = Hive.box('settings');
     state = box.get('auto_download', defaultValue: true);
   }
+
   void set(bool value) {
     state = value;
     Hive.box('settings').put('auto_download', value);
@@ -45,13 +60,16 @@ class AutoDownloadNotifier extends StateNotifier<bool> {
 }
 
 // NEW: Max Concurrent Downloads Provider
-final maxConcurrentDownloadsProvider = StateNotifierProvider<MaxConcurrentNotifier, int>((ref) {
-  return MaxConcurrentNotifier(ref);
-});
+final maxConcurrentDownloadsProvider =
+    StateNotifierProvider<MaxConcurrentNotifier, int>((ref) {
+      return MaxConcurrentNotifier(ref);
+    });
 
 class MaxConcurrentNotifier extends StateNotifier<int> {
   final Ref ref;
-  MaxConcurrentNotifier(this.ref) : super(2) { _load(); }
+  MaxConcurrentNotifier(this.ref) : super(2) {
+    _load();
+  }
 
   void _load() {
     final box = Hive.box('settings');
@@ -96,6 +114,7 @@ final downloadTasksProvider = StreamProvider<List<DownloadTask>>((ref) {
     void listener() {
       if (!controller.isClosed) controller.add(manager.tasks);
     }
+
     controller.add(manager.tasks);
     manager.addListener(listener);
     controller.onCancel = () => manager.removeListener(listener);
@@ -109,6 +128,7 @@ final activeDownloadsProvider = StreamProvider<Set<String>>((ref) {
     void listener() {
       if (!controller.isClosed) controller.add(manager.activeUrlSet);
     }
+
     controller.add(manager.activeUrlSet);
     manager.addListener(listener);
     controller.onCancel = () => manager.removeListener(listener);
@@ -133,13 +153,17 @@ final queueProvider = StreamProvider<List<MediaItem>>((ref) {
 });
 
 final shuffleModeProvider = StreamProvider<AudioServiceShuffleMode>((ref) {
-  return ref.watch(audioHandlerProvider).playbackState
+  return ref
+      .watch(audioHandlerProvider)
+      .playbackState
       .map((state) => state.shuffleMode)
       .distinct();
 });
 
 final repeatModeProvider = StreamProvider<AudioServiceRepeatMode>((ref) {
-  return ref.watch(audioHandlerProvider).playbackState
+  return ref
+      .watch(audioHandlerProvider)
+      .playbackState
       .map((state) => state.repeatMode)
       .distinct();
 });
@@ -161,14 +185,17 @@ final tracksProvider = FutureProvider<List<Track>>((ref) async {
 });
 
 // --- PLAYLISTS PROVIDER ---
-final playlistsProvider = StateNotifierProvider<PlaylistsNotifier, List<Playlist>>((ref) {
-  return PlaylistsNotifier();
-});
+final playlistsProvider =
+    StateNotifierProvider<PlaylistsNotifier, List<Playlist>>((ref) {
+      return PlaylistsNotifier();
+    });
 
 class PlaylistsNotifier extends StateNotifier<List<Playlist>> {
   late Box<Playlist> _box;
 
-  PlaylistsNotifier() : super([]) { _init(); }
+  PlaylistsNotifier() : super([]) {
+    _init();
+  }
 
   Future<void> _init() async {
     if (!Hive.isBoxOpen('playlists')) {
@@ -208,7 +235,11 @@ class PlaylistsNotifier extends StateNotifier<List<Playlist>> {
 final availableErasProvider = Provider<List<String>>((ref) {
   final tracksAsync = ref.watch(tracksProvider);
   return tracksAsync.maybeWhen(
-    data: (tracks) => tracks.map((t) => t.era.trim()).where((e) => e.isNotEmpty).toSet().toList(),
+    data: (tracks) => tracks
+        .map((t) => t.era.trim())
+        .where((e) => e.isNotEmpty)
+        .toSet()
+        .toList(),
     orElse: () => [],
   );
 });
@@ -223,7 +254,9 @@ final filteredTracksProvider = Provider<AsyncValue<List<Track>>>((ref) {
     var result = tracks.where((t) => t.length.trim().isNotEmpty).toList();
 
     if (selectedEras.isNotEmpty) {
-      result = result.where((t) => selectedEras.contains(t.era.trim())).toList();
+      result = result
+          .where((t) => selectedEras.contains(t.era.trim()))
+          .toList();
     }
     if (query.isNotEmpty) {
       result = result.where((t) => t.searchIndex.contains(query)).toList();
@@ -239,19 +272,27 @@ final filteredTracksProvider = Provider<AsyncValue<List<Track>>>((ref) {
         result.sort((a, b) => a.releaseDate.compareTo(b.releaseDate));
         break;
       case SortOption.nameAz:
-        result.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+        result.sort(
+          (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+        );
         break;
       case SortOption.nameZa:
-        result.sort((a, b) => b.title.toLowerCase().compareTo(a.title.toLowerCase()));
+        result.sort(
+          (a, b) => b.title.toLowerCase().compareTo(a.title.toLowerCase()),
+        );
         break;
       case SortOption.shortest:
-        result.sort((a, b) => a.durationInSeconds.compareTo(b.durationInSeconds));
+        result.sort(
+          (a, b) => a.durationInSeconds.compareTo(b.durationInSeconds),
+        );
         break;
       case SortOption.longest:
-        result.sort((a, b) => b.durationInSeconds.compareTo(a.durationInSeconds));
+        result.sort(
+          (a, b) => b.durationInSeconds.compareTo(a.durationInSeconds),
+        );
         break;
       case SortOption.defaultOrder:
-      break;
+        break;
     }
     return result;
   });
@@ -263,7 +304,9 @@ class CacheManager {
     final files = dir.listSync();
     for (var entity in files) {
       if (entity is File && entity.path.endsWith('.mp3')) {
-        try { await entity.delete(); } catch (_) {}
+        try {
+          await entity.delete();
+        } catch (_) {}
       }
     }
     final downloadsBox = Hive.box('downloads');

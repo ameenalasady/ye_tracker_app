@@ -25,7 +25,13 @@ class PlaylistDetailScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        title: Text(updatedPlaylist.name, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: Text(
+          updatedPlaylist.name,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
           onPressed: () => Navigator.pop(context),
@@ -55,22 +61,23 @@ class PlaylistDetailScreen extends ConsumerWidget {
                         child: const Icon(Icons.delete, color: Colors.white),
                       ),
                       onDismissed: (_) {
-                        ref.read(playlistsProvider.notifier).removeTrackFromPlaylist(updatedPlaylist, track);
+                        ref
+                            .read(playlistsProvider.notifier)
+                            .removeTrackFromPlaylist(updatedPlaylist, track);
                       },
                       child: TrackTile(
                         track: track,
                         // Override tap to play the playlist queue starting from this track
                         onTapOverride: () {
-                          ref.read(audioHandlerProvider).playPlaylist(updatedPlaylist.tracks, index);
+                          ref
+                              .read(audioHandlerProvider)
+                              .playPlaylist(updatedPlaylist.tracks, index);
                         },
                       ),
                     );
                   },
                 ),
-          const Align(
-            alignment: Alignment.bottomCenter,
-            child: MiniPlayer(),
-          ),
+          const Align(alignment: Alignment.bottomCenter, child: MiniPlayer()),
         ],
       ),
     );

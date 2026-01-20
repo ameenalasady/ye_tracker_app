@@ -20,7 +20,9 @@ class MiniPlayer extends ConsumerWidget {
 
     final playing = playbackStateAsync.value?.playing ?? false;
     final processingState = playbackStateAsync.value?.processingState;
-    final isLoading = processingState == AudioProcessingState.loading || processingState == AudioProcessingState.buffering;
+    final isLoading =
+        processingState == AudioProcessingState.loading ||
+        processingState == AudioProcessingState.buffering;
 
     return GestureDetector(
       // --- Swipe Gestures ---
@@ -38,19 +40,24 @@ class MiniPlayer extends ConsumerWidget {
 
         Navigator.of(context).push(
           PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const PlayerScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              const begin = Offset(0.0, 1.0);
-              const end = Offset.zero;
-              const curve = Curves.easeOutQuart;
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const PlayerScreen(),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  const begin = Offset(0.0, 1.0);
+                  const end = Offset.zero;
+                  const curve = Curves.easeOutQuart;
 
-              var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                  var tween = Tween(
+                    begin: begin,
+                    end: end,
+                  ).chain(CurveTween(curve: curve));
 
-              return SlideTransition(
-                position: animation.drive(tween),
-                child: child,
-              );
-            },
+                  return SlideTransition(
+                    position: animation.drive(tween),
+                    child: child,
+                  );
+                },
             opaque: false,
           ),
         );
@@ -61,7 +68,9 @@ class MiniPlayer extends ConsumerWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF2A2A2A).withAlpha((0.95 * 255).toInt()),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withAlpha((0.1 * 255).toInt())),
+          border: Border.all(
+            color: Colors.white.withAlpha((0.1 * 255).toInt()),
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withAlpha((0.5 * 255).toInt()),
@@ -96,13 +105,19 @@ class MiniPlayer extends ConsumerWidget {
                                   imageUrl: mediaItem.artUri.toString(),
                                   httpHeaders: Track.imageHeaders,
                                   fit: BoxFit.cover,
-                                  errorWidget: (ctx, _, __) => const Center(
-                                    child: Icon(Icons.music_note_rounded, color: Colors.white54),
+                                  errorWidget: (ctx, _, _) => const Center(
+                                    child: Icon(
+                                      Icons.music_note_rounded,
+                                      color: Colors.white54,
+                                    ),
                                   ),
                                 ),
                               )
                             : const Center(
-                                child: Icon(Icons.music_note_rounded, color: Colors.white54),
+                                child: Icon(
+                                  Icons.music_note_rounded,
+                                  color: Colors.white54,
+                                ),
                               ),
                       ),
                     ),
@@ -128,7 +143,10 @@ class MiniPlayer extends ConsumerWidget {
                             mediaItem.artist ?? "Unknown Artist",
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[400],
+                            ),
                           ),
                         ],
                       ),
@@ -140,12 +158,18 @@ class MiniPlayer extends ConsumerWidget {
                       height: 40,
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: LinearGradient(colors: [Color(0xFFFF7E5F), Color(0xFFFF5252)]),
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFFF7E5F), Color(0xFFFF5252)],
+                        ),
                       ),
                       child: IconButton(
                         padding: EdgeInsets.zero,
                         icon: Icon(
-                          isLoading ? Icons.more_horiz : (playing ? Icons.pause_rounded : Icons.play_arrow_rounded),
+                          isLoading
+                              ? Icons.more_horiz
+                              : (playing
+                                    ? Icons.pause_rounded
+                                    : Icons.play_arrow_rounded),
                           color: Colors.black87,
                           size: 26,
                         ),
@@ -174,7 +198,8 @@ class MiniPlayer extends ConsumerWidget {
                     final duration = mediaItem.duration ?? Duration.zero;
                     double progress = 0.0;
                     if (duration.inMilliseconds > 0) {
-                      progress = position.inMilliseconds / duration.inMilliseconds;
+                      progress =
+                          position.inMilliseconds / duration.inMilliseconds;
                       if (progress > 1.0) progress = 1.0;
                     }
                     if (isLoading) return const SizedBox.shrink();
@@ -183,7 +208,8 @@ class MiniPlayer extends ConsumerWidget {
                       alignment: Alignment.bottomLeft,
                       child: Container(
                         height: 3,
-                        width: (MediaQuery.of(context).size.width - 64) * progress,
+                        width:
+                            (MediaQuery.of(context).size.width - 64) * progress,
                         decoration: BoxDecoration(
                           color: const Color(0xFFFF5252),
                           borderRadius: BorderRadius.circular(2),

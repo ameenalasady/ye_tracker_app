@@ -18,7 +18,8 @@ class TrackTile extends ConsumerStatefulWidget {
   ConsumerState<TrackTile> createState() => _TrackTileState();
 }
 
-class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProviderStateMixin {
+class _TrackTileState extends ConsumerState<TrackTile>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animController;
 
   @override
@@ -42,12 +43,14 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
       track,
       onError: (msg) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(msg)));
         }
       },
       onSuccess: () {
         // Optional: Show success msg
-      }
+      },
     );
   }
 
@@ -55,7 +58,9 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E1E1E),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) {
         final playlists = ref.watch(playlistsProvider);
         return Container(
@@ -63,25 +68,45 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text("Add to Playlist", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+              const Text(
+                "Add to Playlist",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
               const SizedBox(height: 16),
               if (playlists.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(16.0),
-                  child: Text("No playlists created yet.", style: TextStyle(color: Colors.white54)),
+                  child: Text(
+                    "No playlists created yet.",
+                    style: TextStyle(color: Colors.white54),
+                  ),
                 )
               else
-                ...playlists.map((playlist) => ListTile(
-                  leading: const Icon(Icons.playlist_add, color: Colors.white54),
-                  title: Text(playlist.name, style: const TextStyle(color: Colors.white)),
-                  onTap: () {
-                    ref.read(playlistsProvider.notifier).addTrackToPlaylist(playlist, track);
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Added to ${playlist.name}")),
-                    );
-                  },
-                )),
+                ...playlists.map(
+                  (playlist) => ListTile(
+                    leading: const Icon(
+                      Icons.playlist_add,
+                      color: Colors.white54,
+                    ),
+                    title: Text(
+                      playlist.name,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    onTap: () {
+                      ref
+                          .read(playlistsProvider.notifier)
+                          .addTrackToPlaylist(playlist, track);
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Added to ${playlist.name}")),
+                      );
+                    },
+                  ),
+                ),
             ],
           ),
         );
@@ -104,7 +129,9 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     // 1. Listen to the Track object itself (standard Hive update)
     if (widget.track.isInBox) {
       return ValueListenableBuilder(
-        valueListenable: (widget.track.box as Box).listenable(keys: [widget.track.key]),
+        valueListenable: (widget.track.box as Box).listenable(
+          keys: [widget.track.key],
+        ),
         builder: (context, box, _) {
           return _buildWithGlobalListener(context);
         },
@@ -118,7 +145,9 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
   Widget _buildWithGlobalListener(BuildContext context) {
     final downloadsBox = Hive.box('downloads');
     return ValueListenableBuilder(
-      valueListenable: downloadsBox.listenable(keys: [widget.track.effectiveUrl]),
+      valueListenable: downloadsBox.listenable(
+        keys: [widget.track.effectiveUrl],
+      ),
       builder: (context, Box box, _) {
         // Check if global registry has a path
         final globalPath = box.get(widget.track.effectiveUrl);
@@ -132,8 +161,9 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     final hasLink = t.link.isNotEmpty && t.link != "Link Needed";
 
     // Check both local object state AND global registry state
-    final isDownloaded = (t.localPath.isNotEmpty && File(t.localPath).existsSync()) ||
-                         (globalPath != null && File(globalPath).existsSync());
+    final isDownloaded =
+        (t.localPath.isNotEmpty && File(t.localPath).existsSync()) ||
+        (globalPath != null && File(globalPath).existsSync());
 
     final mediaItemAsync = ref.watch(currentMediaItemProvider);
     final playbackStateAsync = ref.watch(playbackStateProvider);
@@ -150,21 +180,24 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
         isCurrentTrack = currentTrackObj == t;
       } else {
         // Fallback ID check (handles both URL and Local Path IDs)
-        isCurrentTrack = mediaItem.id == t.effectiveUrl ||
-                         (isDownloaded && mediaItem.id == (globalPath ?? t.localPath));
+        isCurrentTrack =
+            mediaItem.id == t.effectiveUrl ||
+            (isDownloaded && mediaItem.id == (globalPath ?? t.localPath));
       }
     }
 
     final playbackState = playbackStateAsync.value;
     final processingState = playbackState?.processingState;
 
-    final isPlaying = isCurrentTrack &&
-                      (playbackState?.playing ?? false) &&
-                      processingState != AudioProcessingState.completed;
+    final isPlaying =
+        isCurrentTrack &&
+        (playbackState?.playing ?? false) &&
+        processingState != AudioProcessingState.completed;
 
-    final isBuffering = isCurrentTrack &&
-                        (processingState == AudioProcessingState.buffering ||
-                         processingState == AudioProcessingState.loading);
+    final isBuffering =
+        isCurrentTrack &&
+        (processingState == AudioProcessingState.buffering ||
+            processingState == AudioProcessingState.loading);
 
     final Color cardColor = const Color(0xFF252525);
     final Color activeBorderColor = const Color(0xFFFF5252);
@@ -176,25 +209,33 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
       onLongPress: () => _showAddToPlaylistSheet(context, t),
       onTap: () async {
         if (isDownloaded) {
-           // Pass the global path if local is missing
-           if (t.localPath.isEmpty && globalPath != null) {
-             t.localPath = globalPath; // Update instance temporarily for playback
-           }
-           _playTrack(t, isCurrentTrack, isPlaying);
+          // Pass the global path if local is missing
+          if (t.localPath.isEmpty && globalPath != null) {
+            t.localPath =
+                globalPath; // Update instance temporarily for playback
+          }
+          _playTrack(t, isCurrentTrack, isPlaying);
         } else if (hasLink) {
-           bool online = await _hasInternet();
-           if (!online) {
-             if (context.mounted) {
-               ScaffoldMessenger.of(context).showSnackBar(
-                 const SnackBar(content: Text("No Internet Connection. Download tracks to play offline.")),
-               );
-             }
-           } else {
-             _playTrack(t, isCurrentTrack, isPlaying);
-           }
+          bool online = await _hasInternet();
+          if (!online) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    "No Internet Connection. Download tracks to play offline.",
+                  ),
+                ),
+              );
+            }
+          } else {
+            _playTrack(t, isCurrentTrack, isPlaying);
+          }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("No valid link found."), duration: Duration(milliseconds: 500)),
+            const SnackBar(
+              content: Text("No valid link found."),
+              duration: Duration(milliseconds: 500),
+            ),
           );
         }
       },
@@ -206,11 +247,26 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
           color: cardColor,
           borderRadius: BorderRadius.circular(16),
           border: isCurrentTrack
-            ? Border.all(color: activeBorderColor.withAlpha((0.8 * 255).toInt()), width: 1.5)
-            : Border.all(color: Colors.transparent, width: 1.5),
+              ? Border.all(
+                  color: activeBorderColor.withAlpha((0.8 * 255).toInt()),
+                  width: 1.5,
+                )
+              : Border.all(color: Colors.transparent, width: 1.5),
           boxShadow: isCurrentTrack
-            ? [BoxShadow(color: activeBorderColor.withAlpha((0.25 * 255).toInt()), blurRadius: 12, spreadRadius: 0)]
-            : [const BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))],
+              ? [
+                  BoxShadow(
+                    color: activeBorderColor.withAlpha((0.25 * 255).toInt()),
+                    blurRadius: 12,
+                    spreadRadius: 0,
+                  ),
+                ]
+              : [
+                  const BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
         ),
         child: Row(
           children: [
@@ -221,7 +277,9 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
                   width: 50,
                   height: 50,
                   decoration: BoxDecoration(
-                    color: isCurrentTrack ? activeBorderColor.withAlpha((0.15 * 255).toInt()) : Colors.white.withAlpha((0.05 * 255).toInt()),
+                    color: isCurrentTrack
+                        ? activeBorderColor.withAlpha((0.15 * 255).toInt())
+                        : Colors.white.withAlpha((0.05 * 255).toInt()),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: artUrl.isNotEmpty
@@ -231,13 +289,32 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
                             imageUrl: artUrl,
                             httpHeaders: Track.imageHeaders,
                             fit: BoxFit.cover,
-                            placeholder: (context, url) => Center(child: _buildLeadingIcon(isCurrentTrack, isPlaying, isBuffering)),
-                            errorWidget: (context, url, error) => Center(child: _buildLeadingIcon(isCurrentTrack, isPlaying, isBuffering)),
+                            placeholder: (context, url) => Center(
+                              child: _buildLeadingIcon(
+                                isCurrentTrack,
+                                isPlaying,
+                                isBuffering,
+                              ),
+                            ),
+                            errorWidget: (context, url, error) => Center(
+                              child: _buildLeadingIcon(
+                                isCurrentTrack,
+                                isPlaying,
+                                isBuffering,
+                              ),
+                            ),
                           ),
                         )
-                      : Center(child: _buildLeadingIcon(isCurrentTrack, isPlaying, isBuffering)),
+                      : Center(
+                          child: _buildLeadingIcon(
+                            isCurrentTrack,
+                            isPlaying,
+                            isBuffering,
+                          ),
+                        ),
                 ),
-                if (artUrl.isNotEmpty && (isBuffering || (isCurrentTrack && isPlaying)))
+                if (artUrl.isNotEmpty &&
+                    (isBuffering || (isCurrentTrack && isPlaying)))
                   Container(
                     width: 50,
                     height: 50,
@@ -245,7 +322,13 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
                       color: Colors.black.withAlpha((0.5 * 255).toInt()),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Center(child: _buildLeadingIcon(isCurrentTrack, isPlaying, isBuffering)),
+                    child: Center(
+                      child: _buildLeadingIcon(
+                        isCurrentTrack,
+                        isPlaying,
+                        isBuffering,
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -270,7 +353,7 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
                     [
                       t.artist,
                       if (t.era.isNotEmpty) t.era,
-                      if (t.length.isNotEmpty) t.length
+                      if (t.length.isNotEmpty) t.length,
                     ].where((s) => s.isNotEmpty).join(" • "),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -287,33 +370,40 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
   }
 
   void _playTrack(Track t, bool isCurrentTrack, bool isPlaying) {
-     if (widget.onTapOverride != null) {
-       widget.onTapOverride!();
-       return;
-     }
+    if (widget.onTapOverride != null) {
+      widget.onTapOverride!();
+      return;
+    }
 
-     final handler = ref.read(audioHandlerProvider);
-     if (isCurrentTrack) {
-       isPlaying ? handler.pause() : handler.play();
-     } else {
-       final currentContextList = ref.read(filteredTracksProvider).value ?? [];
+    final handler = ref.read(audioHandlerProvider);
+    if (isCurrentTrack) {
+      isPlaying ? handler.pause() : handler.play();
+    } else {
+      final currentContextList = ref.read(filteredTracksProvider).value ?? [];
 
-       if (currentContextList.isEmpty) {
-         handler.playTrack(t);
-       } else {
-         final index = currentContextList.indexOf(t);
-         if (index != -1) {
-           handler.playPlaylist(currentContextList, index);
-         } else {
-           handler.playTrack(t);
-         }
-       }
-     }
+      if (currentContextList.isEmpty) {
+        handler.playTrack(t);
+      } else {
+        final index = currentContextList.indexOf(t);
+        if (index != -1) {
+          handler.playPlaylist(currentContextList, index);
+        } else {
+          handler.playTrack(t);
+        }
+      }
+    }
   }
 
   Widget _buildLeadingIcon(bool isCurrent, bool isPlaying, bool isBuffering) {
     if (isBuffering) {
-      return const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF5252)));
+      return const SizedBox(
+        width: 20,
+        height: 20,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: Color(0xFFFF5252),
+        ),
+      );
     }
     if (isCurrent && isPlaying) {
       return AnimatedBuilder(
@@ -360,7 +450,11 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     );
   }
 
-  Widget _buildTrailingAction(bool hasLink, bool isDownloaded, bool isDownloading) {
+  Widget _buildTrailingAction(
+    bool hasLink,
+    bool isDownloaded,
+    bool isDownloading,
+  ) {
     const double boxSize = 40.0;
 
     if (isDownloading) {
@@ -371,7 +465,10 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
           child: SizedBox(
             width: 20,
             height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24)
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Colors.white24,
+            ),
           ),
         ),
       );
@@ -382,7 +479,11 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
         width: boxSize,
         height: boxSize,
         child: const Center(
-          child: Icon(Icons.check_circle_rounded, color: Color(0xFF4CAF50), size: 24),
+          child: Icon(
+            Icons.check_circle_rounded,
+            color: Color(0xFF4CAF50),
+            size: 24,
+          ),
         ),
       );
     }
@@ -398,7 +499,11 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
         child: IconButton(
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
-          icon: const Icon(Icons.download_rounded, color: Colors.white38, size: 20),
+          icon: const Icon(
+            Icons.download_rounded,
+            color: Colors.white38,
+            size: 20,
+          ),
           onPressed: () => _manualDownload(widget.track),
         ),
       );
