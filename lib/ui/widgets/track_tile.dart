@@ -25,10 +25,11 @@ class _TrackTileState extends ConsumerState<TrackTile>
   @override
   void initState() {
     super.initState();
+    // FIX: Do not call repeat() here. Just initialize.
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
-    )..repeat();
+    );
   }
 
   @override
@@ -199,10 +200,19 @@ class _TrackTileState extends ConsumerState<TrackTile>
         (processingState == AudioProcessingState.buffering ||
             processingState == AudioProcessingState.loading);
 
+    // --- FIX: Control animation based on state ---
+    if (isPlaying && !_animController.isAnimating) {
+      _animController.repeat();
+    } else if (!isPlaying && _animController.isAnimating) {
+      _animController.stop();
+      _animController.reset(); // Reset so bars go back to flat
+    }
+    // ---------------------------------------------
+
     final Color cardColor = const Color(0xFF252525);
     final Color activeBorderColor = const Color(0xFFFF5252);
 
-    // --- CHANGED: Use effectiveAlbumArt ---
+    // Use effectiveAlbumArt
     final artUrl = t.effectiveAlbumArt;
 
     return GestureDetector(
