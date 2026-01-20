@@ -10,9 +10,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final _player = AudioPlayer();
   final DownloadManager downloadManager; // Dependency Injection
 
-  // FIX: Internal cache to map Media IDs (URIs) back to Track objects.
-  // We do this because passing the Track object (HiveObject) in MediaItem.extras
-  // breaks the Platform Channel serialization, causing the notification to fail updating.
+  // Internal cache to map Media IDs (URIs) back to Track objects.
   final Map<String, Track> _trackCache = {};
 
   ConcatenatingAudioSource? _playlist;
@@ -84,7 +82,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
         mediaItem.add(item);
 
-        // FIX: Retrieve Track from our local cache using the ID
+        // Retrieve Track from our local cache using the ID
         final track = _trackCache[item.id];
 
         if (track != null) {
@@ -231,18 +229,28 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   }
 
   AudioSource _createAudioSource(MediaItem item) {
-    // FIX: Retrieve from cache
+    // Retrieve from cache
     final track = _trackCache[item.id];
 
-    // Fallback if track not found (shouldn't happen with this logic)
+    // Fallback if track not found
     if (track == null) {
       return AudioSource.uri(Uri.parse(item.id), tag: item);
     }
 
     String uri = track.effectiveUrl;
+
+    // 1. Check Local Object
     bool isLocal = track.localPath.isNotEmpty && File(track.localPath).existsSync();
 
-    if (isLocal) {
+    // 2. Fallback: Check Global Registry
+    if (!isLocal) {
+      final downloadsBox = Hive.box('downloads');
+      final globalPath = downloadsBox.get(track.effectiveUrl);
+      if (globalPath != null && File(globalPath).existsSync()) {
+        uri = globalPath;
+        isLocal = true;
+      }
+    } else {
       uri = track.localPath;
     }
 
@@ -254,20 +262,29 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   MediaItem _createMediaItem(Track track) {
     String uri = track.effectiveUrl;
+
+    // 1. Check Local Object
     if (track.localPath.isNotEmpty && File(track.localPath).existsSync()) {
       uri = track.localPath;
+    } else {
+      // 2. Fallback: Check Global Registry
+      final downloadsBox = Hive.box('downloads');
+      final globalPath = downloadsBox.get(track.effectiveUrl);
+      if (globalPath != null && File(globalPath).existsSync()) {
+        uri = globalPath;
+      }
     }
 
-    // FIX: Store track in local cache instead of extras
+    // Store track in local cache using the specific URI we decided on (Network or Local)
     _trackCache[uri] = track;
+    // Also store by effectiveUrl to be safe for reverse lookups if needed
+    _trackCache[track.effectiveUrl] = track;
 
     return MediaItem(
       id: uri,
       title: track.title,
       artist: track.artist.isEmpty ? (track.era.isNotEmpty ? track.era : "Ye Tracker") : track.artist,
       artUri: track.albumArtUrl.isNotEmpty ? Uri.tryParse(track.albumArtUrl) : null,
-      // FIX: Ensure extras is clean/null.
-      // Passing HiveObjects here crashes the Platform Channel update.
       extras: null,
     );
   }

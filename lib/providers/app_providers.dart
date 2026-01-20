@@ -253,5 +253,8 @@ class CacheManager {
         } catch (_) {}
       }
     }
+
+    final downloadsBox = Hive.box('downloads');
+    await downloadsBox.clear();
   }
 }

@@ -30,6 +30,7 @@ Future<void> main() async {
   await Hive.openBox('settings');
   await Hive.openBox<Playlist>('playlists');
   await Hive.openBox<SheetTab>('tabs');
+  await Hive.openBox('downloads');
 
   // Initialize Download Manager (Singleton for the app life)
   final downloadManager = DownloadManager();

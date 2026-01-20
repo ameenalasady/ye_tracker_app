@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:hive/hive.dart';
 import '../models/sheet_tab.dart';
 import '../models/track.dart';
@@ -9,7 +10,7 @@ class TracksRepository {
   TracksRepository({required String sourceUrl}) : _parser = TrackerParser(sourceUrl);
 
   /// Fetches the list of tabs (Eras).
-  /// FIX: Implemented Network-First, Cache-Fallback strategy.
+  /// Implemented Network-First, Cache-Fallback strategy.
   Future<List<SheetTab>> fetchTabs() async {
     final box = Hive.box<SheetTab>('tabs');
 
@@ -48,6 +49,24 @@ class TracksRepository {
     try {
       // Fetch from network if cache is empty
       final tracks = await _parser.fetchTracksForTab(tab.gid);
+
+      // --- FIX: Restore Download State ---
+      // Cross-reference with the Global Downloads Registry.
+      // If the URL exists in 'downloads' box and the file exists,
+      // set the localPath on this new Track object.
+      final downloadsBox = Hive.box('downloads');
+
+      for (var track in tracks) {
+        final savedPath = downloadsBox.get(track.effectiveUrl);
+        if (savedPath != null && savedPath is String) {
+          if (File(savedPath).existsSync()) {
+            track.localPath = savedPath;
+          } else {
+            // File was deleted manually from disk? Remove from registry.
+            downloadsBox.delete(track.effectiveUrl);
+          }
+        }
+      }
 
       // Save to local cache
       await box.clear();

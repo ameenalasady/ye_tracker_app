@@ -89,7 +89,7 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     );
   }
 
-  // --- FIX: Helper to check basic connectivity ---
+  // Helper to check basic connectivity
   Future<bool> _hasInternet() async {
     try {
       final result = await InternetAddress.lookup('google.com');
@@ -101,22 +101,39 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
+    // 1. Listen to the Track object itself (standard Hive update)
     if (widget.track.isInBox) {
       return ValueListenableBuilder(
         valueListenable: (widget.track.box as Box).listenable(keys: [widget.track.key]),
         builder: (context, box, _) {
-          return _buildTileContent(context);
+          return _buildWithGlobalListener(context);
         },
       );
     } else {
-      return _buildTileContent(context);
+      return _buildWithGlobalListener(context);
     }
   }
 
-  Widget _buildTileContent(BuildContext context) {
+  // 2. NEW: Listen to the Global Downloads Registry for this specific URL
+  Widget _buildWithGlobalListener(BuildContext context) {
+    final downloadsBox = Hive.box('downloads');
+    return ValueListenableBuilder(
+      valueListenable: downloadsBox.listenable(keys: [widget.track.effectiveUrl]),
+      builder: (context, Box box, _) {
+        // Check if global registry has a path
+        final globalPath = box.get(widget.track.effectiveUrl);
+        return _buildTileContent(context, globalPath);
+      },
+    );
+  }
+
+  Widget _buildTileContent(BuildContext context, String? globalPath) {
     final t = widget.track;
     final hasLink = t.link.isNotEmpty && t.link != "Link Needed";
-    final isDownloaded = t.localPath.isNotEmpty && File(t.localPath).existsSync();
+
+    // Check both local object state AND global registry state
+    final isDownloaded = (t.localPath.isNotEmpty && File(t.localPath).existsSync()) ||
+                         (globalPath != null && File(globalPath).existsSync());
 
     final mediaItemAsync = ref.watch(currentMediaItemProvider);
     final playbackStateAsync = ref.watch(playbackStateProvider);
@@ -132,8 +149,9 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
       if (currentTrackObj != null) {
         isCurrentTrack = currentTrackObj == t;
       } else {
+        // Fallback ID check (handles both URL and Local Path IDs)
         isCurrentTrack = mediaItem.id == t.effectiveUrl ||
-                         (t.localPath.isNotEmpty && mediaItem.id == t.localPath);
+                         (isDownloaded && mediaItem.id == (globalPath ?? t.localPath));
       }
     }
 
@@ -154,13 +172,13 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     return GestureDetector(
       onLongPress: () => _showAddToPlaylistSheet(context, t),
       onTap: () async {
-        // --- FIX: Robust Offline Check ---
         if (isDownloaded) {
+           // Pass the global path if local is missing
+           if (t.localPath.isEmpty && globalPath != null) {
+             t.localPath = globalPath; // Update instance temporarily for playback
+           }
            _playTrack(t, isCurrentTrack, isPlaying);
         } else if (hasLink) {
-           // We are not downloaded, check internet before trying to stream
-           // Note: This is a simple check. AudioHandler also handles errors,
-           // but checking here prevents the UI from entering a loading state unnecessarily.
            bool online = await _hasInternet();
            if (!online) {
              if (context.mounted) {
