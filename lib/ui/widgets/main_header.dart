@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/app_providers.dart';
+import '../screens/downloads_screen.dart';
 
 class MainHeader extends ConsumerStatefulWidget {
   final VoidCallback onPlaylistsTap;
@@ -38,12 +39,12 @@ class _MainHeaderState extends ConsumerState<MainHeader> {
 
   @override
   Widget build(BuildContext context) {
-    // Watch these to show the little red dot on the filter icon
-    final activeEraCount = ref.watch(selectedErasProvider).length;
-    final isSortChanged = ref.watch(sortOptionProvider) != SortOption.defaultOrder;
-    final isFilterActive = activeEraCount > 0 || isSortChanged;
+    final activeEras = ref.watch(selectedErasProvider);
+    final currentSort = ref.watch(sortOptionProvider);
+    final activeDownloads = ref.watch(activeDownloadsProvider).value ?? {};
 
-    // Listen to external changes to search query (e.g. from Tab change clearing it)
+    final isFilterActive = activeEras.isNotEmpty || currentSort != SortOption.defaultOrder;
+
     ref.listen(searchQueryProvider, (previous, next) {
       if (next.isEmpty && _searchController.text.isNotEmpty) {
         _searchController.clear();
@@ -69,6 +70,30 @@ class _MainHeaderState extends ConsumerState<MainHeader> {
               ),
               Row(
                 children: [
+                  // DOWNLOADS BUTTON (NEW)
+                  Stack(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.download_rounded, color: Colors.white54),
+                        onPressed: () {
+                           Navigator.push(context, MaterialPageRoute(builder: (_) => const DownloadsScreen()));
+                        },
+                      ),
+                      if (activeDownloads.isNotEmpty)
+                        Positioned(
+                          right: 8,
+                          top: 8,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFFF5252),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                   IconButton(
                     icon: const Icon(Icons.library_music_rounded, color: Colors.white54),
                     onPressed: widget.onPlaylistsTap,
@@ -97,7 +122,6 @@ class _MainHeaderState extends ConsumerState<MainHeader> {
                         ),
                     ],
                   ),
-                  // Refresh button removed from here
                   IconButton(
                     icon: const Icon(Icons.settings_rounded, color: Colors.white54),
                     onPressed: widget.onSettingsTap,

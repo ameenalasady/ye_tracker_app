@@ -27,36 +27,23 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
 
   Future<void> _refreshLibrary() async {
     setState(() => _isRefreshing = true);
-
-    // Aesthetic delay to let user see the spinner
     await Future.delayed(const Duration(milliseconds: 500));
-
     final selectedTab = ref.read(selectedTabProvider);
 
     try {
       if (selectedTab != null) {
-        // 1. Tell Repository to clear the local cache for this tab
         await ref.read(tracksRepositoryProvider).clearLocalCache(selectedTab);
-        // 2. Invalidate provider to trigger re-read (which will now fetch from network)
         ref.invalidate(tracksProvider);
       } else {
-        // If no tab selected, refresh the tabs list
         ref.invalidate(tabsProvider);
       }
-
-      // Always refresh cache size calculation
       ref.invalidate(cacheSizeProvider);
-
       if (mounted) {
-         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Library refreshed successfully")),
-        );
+         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Library refreshed successfully")));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Refresh failed: $e")),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Refresh failed: $e")));
       }
     } finally {
       if (mounted) setState(() => _isRefreshing = false);
@@ -67,6 +54,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
   Widget build(BuildContext context) {
     final autoDownload = ref.watch(autoDownloadProvider);
     final cacheSizeAsync = ref.watch(cacheSizeProvider);
+    final maxConcurrent = ref.watch(maxConcurrentDownloadsProvider);
 
     return Padding(
       padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
@@ -76,39 +64,27 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
         children: [
           Center(
             child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                  color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+              width: 40, height: 4,
+              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
             ),
           ),
           const SizedBox(height: 24),
-          const Text("Settings",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+          const Text("Settings", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
           const SizedBox(height: 24),
 
-          // --- LIBRARY & STORAGE SECTION ---
-          const Text("Library & Storage",
-              style: TextStyle(
-                  color: Color(0xFFFF5252), fontWeight: FontWeight.bold, fontSize: 13)),
+          // --- LIBRARY & STORAGE ---
+          const Text("Library & Storage", style: TextStyle(color: Color(0xFFFF5252), fontWeight: FontWeight.bold, fontSize: 13)),
           const SizedBox(height: 10),
           Container(
-            decoration: BoxDecoration(
-                color: const Color(0xFF2A2A2A), borderRadius: BorderRadius.circular(16)),
+            decoration: BoxDecoration(color: const Color(0xFF2A2A2A), borderRadius: BorderRadius.circular(16)),
             child: Column(
               children: [
-                // REFRESH BUTTON ADDED HERE
                 ListTile(
                   leading: const Icon(Icons.sync_rounded, color: Colors.white),
                   title: const Text("Refresh Library", style: TextStyle(color: Colors.white)),
-                  subtitle: const Text("Pull latest changes from tracker",
-                      style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  subtitle: const Text("Pull latest changes from tracker", style: TextStyle(color: Colors.grey, fontSize: 12)),
                   trailing: _isRefreshing
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF5252)),
-                        )
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF5252)))
                       : const Icon(Icons.chevron_right_rounded, color: Colors.white54),
                   onTap: _isRefreshing ? null : _refreshLibrary,
                 ),
@@ -117,36 +93,49 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                   value: autoDownload,
                   activeThumbColor: const Color(0xFFFF5252),
                   title: const Text("Auto-Download on Play", style: TextStyle(color: Colors.white)),
-                  subtitle: const Text("Automatically save songs when you play them",
-                      style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  subtitle: const Text("Automatically save songs when you play them", style: TextStyle(color: Colors.grey, fontSize: 12)),
                   onChanged: (val) {
                     ref.read(autoDownloadProvider.notifier).set(val);
                   },
                 ),
                 Divider(height: 1, color: Colors.white.withOpacity(0.05)),
                 ListTile(
+                  title: const Text("Concurrent Downloads", style: TextStyle(color: Colors.white)),
+                  subtitle: Text("Limit simultaneous downloads (Currently: $maxConcurrent)", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline, color: Colors.white54),
+                        onPressed: maxConcurrent > 1
+                            ? () => ref.read(maxConcurrentDownloadsProvider.notifier).set(maxConcurrent - 1)
+                            : null,
+                      ),
+                      Text("$maxConcurrent", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline, color: Colors.white54),
+                        onPressed: maxConcurrent < 5
+                            ? () => ref.read(maxConcurrentDownloadsProvider.notifier).set(maxConcurrent + 1)
+                            : null,
+                      ),
+                    ],
+                  ),
+                ),
+                Divider(height: 1, color: Colors.white.withOpacity(0.05)),
+                ListTile(
                   title: const Text("Clear Cache", style: TextStyle(color: Colors.white)),
-                  subtitle: Text(
-                      "Frees up space (Currently used: ${cacheSizeAsync.value ?? 'Calculating...'})",
-                      style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                  subtitle: Text("Frees up space (Currently used: ${cacheSizeAsync.value ?? 'Calculating...'})", style: const TextStyle(color: Colors.grey, fontSize: 12)),
                   trailing: const Icon(Icons.delete_outline, color: Colors.white54),
                   onTap: () async {
                     final confirm = await showDialog<bool>(
                       context: context,
                       builder: (c) => AlertDialog(
                         backgroundColor: const Color(0xFF252525),
-                        title:
-                            const Text("Clear Cache?", style: TextStyle(color: Colors.white)),
-                        content: const Text("This will delete all downloaded songs.",
-                            style: TextStyle(color: Colors.white70)),
+                        title: const Text("Clear Cache?", style: TextStyle(color: Colors.white)),
+                        content: const Text("This will delete all downloaded songs.", style: TextStyle(color: Colors.white70)),
                         actions: [
-                          TextButton(
-                              onPressed: () => Navigator.pop(c, false),
-                              child: const Text("Cancel")),
-                          TextButton(
-                              onPressed: () => Navigator.pop(c, true),
-                              child: const Text("Delete",
-                                  style: TextStyle(color: Color(0xFFFF5252)))),
+                          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text("Cancel")),
+                          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text("Delete", style: TextStyle(color: Color(0xFFFF5252)))),
                         ],
                       ),
                     );
@@ -156,8 +145,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                       ref.invalidate(cacheSizeProvider);
                       ref.invalidate(tracksProvider);
                       if (context.mounted) {
-                        ScaffoldMessenger.of(context)
-                            .showSnackBar(const SnackBar(content: Text("Cache cleared")));
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Cache cleared")));
                       }
                     }
                   },
@@ -168,15 +156,12 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
 
           const SizedBox(height: 24),
 
-          // --- DATA SOURCE SECTION ---
-          const Text("Data Source",
-              style: TextStyle(
-                  color: Color(0xFFFF5252), fontWeight: FontWeight.bold, fontSize: 13)),
+          // --- DATA SOURCE ---
+          const Text("Data Source", style: TextStyle(color: Color(0xFFFF5252), fontWeight: FontWeight.bold, fontSize: 13)),
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-                color: const Color(0xFF2A2A2A), borderRadius: BorderRadius.circular(16)),
+            decoration: BoxDecoration(color: const Color(0xFF2A2A2A), borderRadius: BorderRadius.circular(16)),
             child: Row(
               children: [
                 Expanded(
@@ -202,9 +187,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
             ),
           ),
           const SizedBox(height: 12),
-          const Center(
-              child: Text("v1.2.0 • Ye Tracker",
-                  style: TextStyle(color: Colors.white24, fontSize: 12))),
+          const Center(child: Text("v1.3.0 • Ye Tracker", style: TextStyle(color: Colors.white24, fontSize: 12))),
         ],
       ),
     );

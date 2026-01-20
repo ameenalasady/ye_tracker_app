@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -6,43 +7,68 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/track.dart';
 
-class DownloadManager extends ValueNotifier<Set<String>> {
+enum DownloadStatus { queued, connecting, downloading, completed, failed, canceled }
+
+class DownloadTask {
+  final Track track;
+  final String id; // track.effectiveUrl
+  DownloadStatus status;
+  double progress; // 0.0 to 1.0
+  String statusMessage;
+
+  DownloadTask({
+    required this.track,
+    this.status = DownloadStatus.queued,
+    this.progress = 0.0,
+    this.statusMessage = "Queued",
+  }) : id = track.effectiveUrl;
+}
+
+class DownloadManager extends ChangeNotifier {
   final Dio _dio = Dio();
 
-  DownloadManager() : super({});
+  // The master list of all tasks (active + queued)
+  final List<DownloadTask> _tasks = [];
 
-  /// Returns true if the track is currently downloading
-  bool isDownloading(String url) => value.contains(url);
+  // Expose tasks as an unmodifiable list for UI
+  List<DownloadTask> get tasks => UnmodifiableListView(_tasks);
 
-  /// Downloads a track, saves it to storage, and updates the Hive object.
+  // Helper to check if a specific URL is in the list
+  bool isDownloading(String url) => _tasks.any((t) => t.id == url && t.status != DownloadStatus.completed && t.status != DownloadStatus.failed);
+
+  // Helper for TrackTiles to just check existence
+  Set<String> get activeUrlSet => _tasks
+      .where((t) => t.status != DownloadStatus.completed && t.status != DownloadStatus.failed)
+      .map((t) => t.id)
+      .toSet();
+
   Future<void> downloadTrack(Track track, {VoidCallback? onSuccess, Function(String)? onError}) async {
     // 1. Validation
     if (track.effectiveUrl.isEmpty) {
       onError?.call("Invalid URL");
       return;
     }
-    if (value.contains(track.effectiveUrl)) return; // Already downloading
 
-    // 2. Check Global Registry (Fast Path)
-    // If we already have this URL downloaded from another tab, use that file.
+    // Check if already in queue/downloading
+    if (isDownloading(track.effectiveUrl)) return;
+
+    // 2. Check Existance (Fast Path)
     final downloadsBox = Hive.box('downloads');
     final existingPath = downloadsBox.get(track.effectiveUrl);
 
     if (existingPath != null && existingPath is String && File(existingPath).existsSync()) {
        track.localPath = existingPath;
-       if (track.isInBox) {
-         await track.save();
-       }
+       if (track.isInBox) await track.save();
        onSuccess?.call();
        return;
     }
 
     if (track.localPath.isNotEmpty && File(track.localPath).existsSync()) {
       onSuccess?.call();
-      return; // Already downloaded (Checked object state)
+      return;
     }
 
-    // 3. Permissions (Android specifically)
+    // 3. Permissions
     if (Platform.isAndroid) {
       final status = await Permission.storage.request();
       if (status.isPermanentlyDenied) {
@@ -51,69 +77,109 @@ class DownloadManager extends ValueNotifier<Set<String>> {
       }
     }
 
-    // 4. Add to Active Set
-    _addToActive(track.effectiveUrl);
+    // 4. Create Task and Add to List
+    final task = DownloadTask(track: track);
+    _tasks.add(task);
+    notifyListeners(); // Update UI immediately
 
+    // 5. Process Queue
+    _processQueue();
+  }
+
+  void _processQueue() async {
+    // Get setting for concurrency
+    final settingsBox = Hive.box('settings');
+    final int maxConcurrent = settingsBox.get('max_concurrent_downloads', defaultValue: 2);
+
+    // Count how many are currently running
+    final runningCount = _tasks.where((t) =>
+      t.status == DownloadStatus.connecting || t.status == DownloadStatus.downloading
+    ).length;
+
+    if (runningCount >= maxConcurrent) return;
+
+    // Find next queued item
     try {
-      // 5. Determine Path
-      final dir = await getApplicationDocumentsDirectory();
-      final safeName = track.displayName.replaceAll(RegExp(r'[^\w\s\.-]'), '').trim();
-      final savePath = '${dir.path}/$safeName.mp3';
+      final nextTask = _tasks.firstWhere((t) => t.status == DownloadStatus.queued);
+      _startDownload(nextTask);
 
-      // 6. Download
-      await _dio.download(
-        track.effectiveUrl,
-        savePath,
-        options: Options(receiveTimeout: const Duration(minutes: 10)),
-      );
-
-      // 7. Update Track Object AND Global Registry
-      final file = File(savePath);
-      if (file.existsSync()) {
-        // A. Update the specific track instance
-        track.localPath = savePath;
-        if (track.isInBox) {
-          await track.save();
-        }
-
-        // B. Update the Global Downloads Registry
-        await downloadsBox.put(track.effectiveUrl, savePath);
-
-        onSuccess?.call();
-      } else {
-        throw Exception("File not found after download");
-      }
-    } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionError || e.error is SocketException) {
-        onError?.call("No Internet Connection");
-      } else {
-        debugPrint("Download failed for ${track.title}: $e");
-        onError?.call("Download Failed");
+      // If we still have room, recurse lightly to fill slots
+      if (runningCount + 1 < maxConcurrent) {
+        _processQueue();
       }
     } catch (e) {
-      debugPrint("Download failed for ${track.title}: $e");
-      onError?.call("Download Failed");
-    } finally {
-      // 8. Remove from Active Set
-      _removeFromActive(track.effectiveUrl);
+      // No queued items found, we are done.
     }
   }
 
-  void _addToActive(String url) {
-    final newSet = Set<String>.from(value);
-    newSet.add(url);
-    value = newSet;
+  Future<void> _startDownload(DownloadTask task) async {
+    task.status = DownloadStatus.connecting;
+    task.statusMessage = "Connecting...";
+    notifyListeners();
+
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final safeName = task.track.displayName.replaceAll(RegExp(r'[^\w\s\.-]'), '').trim();
+      final savePath = '${dir.path}/$safeName.mp3';
+
+      await _dio.download(
+        task.track.effectiveUrl,
+        savePath,
+        options: Options(receiveTimeout: const Duration(minutes: 10)),
+        onReceiveProgress: (received, total) {
+          task.status = DownloadStatus.downloading;
+          if (total != -1) {
+            task.progress = received / total;
+            task.statusMessage = "${(task.progress * 100).toStringAsFixed(0)}%";
+          } else {
+            // Indeterminate
+            task.statusMessage = "Downloading...";
+          }
+          // Notify listeners occasionally or on significant change to avoid UI spam?
+          // For simplicity, we notify. Dio doesn't fire this too insanely fast.
+          notifyListeners();
+        },
+      );
+
+      final file = File(savePath);
+      if (file.existsSync()) {
+        task.track.localPath = savePath;
+        if (task.track.isInBox) await task.track.save();
+
+        final downloadsBox = Hive.box('downloads');
+        await downloadsBox.put(task.track.effectiveUrl, savePath);
+
+        task.status = DownloadStatus.completed;
+        task.progress = 1.0;
+        task.statusMessage = "Done";
+      } else {
+        throw Exception("File missing");
+      }
+    } catch (e) {
+      task.status = DownloadStatus.failed;
+      task.statusMessage = "Failed";
+      debugPrint("Download Error: $e");
+    } finally {
+      // Remove completed/failed tasks after a delay, or keep them?
+      // Let's keep them in the UI for a moment, then remove or let user clear.
+      // For this implementation, we remove completed tasks from the active list logic
+      // but keeping them in memory allows the UI to show "Done".
+      // Let's trigger the queue for the next item.
+      notifyListeners();
+      _processQueue();
+
+      // Cleanup completed tasks after 2 seconds to keep list clean
+      if (task.status == DownloadStatus.completed) {
+        Future.delayed(const Duration(seconds: 2), () {
+          _tasks.remove(task);
+          notifyListeners();
+        });
+      }
+    }
   }
 
-  void _removeFromActive(String url) {
-    final newSet = Set<String>.from(value);
-    newSet.remove(url);
-    value = newSet;
-  }
-
-  @override
-  void dispose() {
-    _dio.close();
-    super.dispose();
+  // Called when settings change to potentially start more downloads
+  void retryQueue() {
+    _processQueue();
   }
 }

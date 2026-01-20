@@ -9,7 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import '../models/playlist.dart';
 import '../models/sheet_tab.dart';
 import '../models/track.dart';
-import '../repositories/tracks_repository.dart'; // Import Repository
+import '../repositories/tracks_repository.dart';
 import '../services/audio_handler.dart';
 import '../services/download_manager.dart';
 
@@ -33,24 +33,40 @@ final autoDownloadProvider = StateNotifierProvider<AutoDownloadNotifier, bool>((
 });
 
 class AutoDownloadNotifier extends StateNotifier<bool> {
-  AutoDownloadNotifier() : super(true) {
-    _load();
-  }
-
+  AutoDownloadNotifier() : super(true) { _load(); }
   void _load() {
-    // Box is opened in main.dart before app starts, so this is safe
     final box = Hive.box('settings');
     state = box.get('auto_download', defaultValue: true);
   }
-
   void set(bool value) {
     state = value;
     Hive.box('settings').put('auto_download', value);
   }
 }
 
+// NEW: Max Concurrent Downloads Provider
+final maxConcurrentDownloadsProvider = StateNotifierProvider<MaxConcurrentNotifier, int>((ref) {
+  return MaxConcurrentNotifier(ref);
+});
+
+class MaxConcurrentNotifier extends StateNotifier<int> {
+  final Ref ref;
+  MaxConcurrentNotifier(this.ref) : super(2) { _load(); }
+
+  void _load() {
+    final box = Hive.box('settings');
+    state = box.get('max_concurrent_downloads', defaultValue: 2);
+  }
+
+  void set(int value) {
+    state = value;
+    Hive.box('settings').put('max_concurrent_downloads', value);
+    // Trigger queue check in case we increased the limit
+    ref.read(downloadManagerProvider).retryQueue();
+  }
+}
+
 final cacheSizeProvider = FutureProvider<String>((ref) async {
-  // Watch tabs to recalculate when tabs change/refresh
   ref.watch(tabsProvider);
   final dir = await getApplicationDocumentsDirectory();
   try {
@@ -73,13 +89,27 @@ final downloadManagerProvider = Provider<DownloadManager>((ref) {
   throw UnimplementedError("Initialize in main.dart");
 });
 
+// Provides the detailed list of tasks for the Downloads Screen
+final downloadTasksProvider = StreamProvider<List<DownloadTask>>((ref) {
+  final manager = ref.watch(downloadManagerProvider);
+  return Stream.multi((controller) {
+    void listener() {
+      if (!controller.isClosed) controller.add(manager.tasks);
+    }
+    controller.add(manager.tasks);
+    manager.addListener(listener);
+    controller.onCancel = () => manager.removeListener(listener);
+  });
+});
+
+// Backward compatible provider for TrackTile spinner (returns Set of IDs)
 final activeDownloadsProvider = StreamProvider<Set<String>>((ref) {
   final manager = ref.watch(downloadManagerProvider);
   return Stream.multi((controller) {
     void listener() {
-      if (!controller.isClosed) controller.add(manager.value);
+      if (!controller.isClosed) controller.add(manager.activeUrlSet);
     }
-    controller.add(manager.value);
+    controller.add(manager.activeUrlSet);
     manager.addListener(listener);
     controller.onCancel = () => manager.removeListener(listener);
   });
@@ -114,8 +144,7 @@ final repeatModeProvider = StreamProvider<AudioServiceRepeatMode>((ref) {
       .distinct();
 });
 
-// --- DATA FETCHING (REFACTORED) ---
-
+// --- DATA FETCHING ---
 final tabsProvider = FutureProvider<List<SheetTab>>((ref) async {
   final repository = ref.watch(tracksRepositoryProvider);
   return await repository.fetchTabs();
@@ -139,9 +168,7 @@ final playlistsProvider = StateNotifierProvider<PlaylistsNotifier, List<Playlist
 class PlaylistsNotifier extends StateNotifier<List<Playlist>> {
   late Box<Playlist> _box;
 
-  PlaylistsNotifier() : super([]) {
-    _init();
-  }
+  PlaylistsNotifier() : super([]) { _init(); }
 
   Future<void> _init() async {
     if (!Hive.isBoxOpen('playlists')) {
@@ -158,7 +185,6 @@ class PlaylistsNotifier extends StateNotifier<List<Playlist>> {
   Future<void> createPlaylist(String name) async {
     final newPlaylist = Playlist(name: name, tracks: []);
     await _box.add(newPlaylist);
-    // State updates automatically via listener
   }
 
   Future<void> deletePlaylist(Playlist playlist) async {
@@ -166,7 +192,6 @@ class PlaylistsNotifier extends StateNotifier<List<Playlist>> {
   }
 
   Future<void> addTrackToPlaylist(Playlist playlist, Track track) async {
-    // Only add if not already present
     if (!playlist.tracks.any((t) => t == track)) {
       playlist.tracks.add(track);
       await playlist.save();
@@ -183,13 +208,7 @@ class PlaylistsNotifier extends StateNotifier<List<Playlist>> {
 final availableErasProvider = Provider<List<String>>((ref) {
   final tracksAsync = ref.watch(tracksProvider);
   return tracksAsync.maybeWhen(
-    data: (tracks) {
-      return tracks
-          .map((t) => t.era.trim())
-          .where((e) => e.isNotEmpty)
-          .toSet()
-          .toList();
-    },
+    data: (tracks) => tracks.map((t) => t.era.trim()).where((e) => e.isNotEmpty).toSet().toList(),
     orElse: () => [],
   );
 });
@@ -206,12 +225,10 @@ final filteredTracksProvider = Provider<AsyncValue<List<Track>>>((ref) {
     if (selectedEras.isNotEmpty) {
       result = result.where((t) => selectedEras.contains(t.era.trim())).toList();
     }
-
     if (query.isNotEmpty) {
       result = result.where((t) => t.searchIndex.contains(query)).toList();
     }
 
-    // Create a copy to sort
     result = List.of(result);
 
     switch (sortOption) {
@@ -236,7 +253,6 @@ final filteredTracksProvider = Provider<AsyncValue<List<Track>>>((ref) {
       case SortOption.defaultOrder:
       break;
     }
-
     return result;
   });
 });
@@ -245,15 +261,11 @@ class CacheManager {
   static Future<void> clearAllCache() async {
     final dir = await getApplicationDocumentsDirectory();
     final files = dir.listSync();
-
     for (var entity in files) {
       if (entity is File && entity.path.endsWith('.mp3')) {
-        try {
-          await entity.delete();
-        } catch (_) {}
+        try { await entity.delete(); } catch (_) {}
       }
     }
-
     final downloadsBox = Hive.box('downloads');
     await downloadsBox.clear();
   }
