@@ -11,6 +11,7 @@ class SettingsSheet extends ConsumerStatefulWidget {
 
 class _SettingsSheetState extends ConsumerState<SettingsSheet> {
   late TextEditingController _sourceController;
+  bool _isRefreshing = false;
 
   @override
   void initState() {
@@ -22,6 +23,44 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
   void dispose() {
     _sourceController.dispose();
     super.dispose();
+  }
+
+  Future<void> _refreshLibrary() async {
+    setState(() => _isRefreshing = true);
+
+    // Aesthetic delay to let user see the spinner
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    final selectedTab = ref.read(selectedTabProvider);
+
+    try {
+      if (selectedTab != null) {
+        // 1. Tell Repository to clear the local cache for this tab
+        await ref.read(tracksRepositoryProvider).clearLocalCache(selectedTab);
+        // 2. Invalidate provider to trigger re-read (which will now fetch from network)
+        ref.invalidate(tracksProvider);
+      } else {
+        // If no tab selected, refresh the tabs list
+        ref.invalidate(tabsProvider);
+      }
+
+      // Always refresh cache size calculation
+      ref.invalidate(cacheSizeProvider);
+
+      if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Library refreshed successfully")),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Refresh failed: $e")),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isRefreshing = false);
+    }
   }
 
   @override
@@ -47,7 +86,9 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
           const Text("Settings",
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
           const SizedBox(height: 24),
-          const Text("Offline & Storage",
+
+          // --- LIBRARY & STORAGE SECTION ---
+          const Text("Library & Storage",
               style: TextStyle(
                   color: Color(0xFFFF5252), fontWeight: FontWeight.bold, fontSize: 13)),
           const SizedBox(height: 10),
@@ -56,6 +97,22 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                 color: const Color(0xFF2A2A2A), borderRadius: BorderRadius.circular(16)),
             child: Column(
               children: [
+                // REFRESH BUTTON ADDED HERE
+                ListTile(
+                  leading: const Icon(Icons.sync_rounded, color: Colors.white),
+                  title: const Text("Refresh Library", style: TextStyle(color: Colors.white)),
+                  subtitle: const Text("Pull latest changes from tracker",
+                      style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  trailing: _isRefreshing
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF5252)),
+                        )
+                      : const Icon(Icons.chevron_right_rounded, color: Colors.white54),
+                  onTap: _isRefreshing ? null : _refreshLibrary,
+                ),
+                Divider(height: 1, color: Colors.white.withOpacity(0.05)),
                 SwitchListTile(
                   value: autoDownload,
                   activeThumbColor: const Color(0xFFFF5252),
@@ -108,7 +165,10 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
               ],
             ),
           ),
+
           const SizedBox(height: 24),
+
+          // --- DATA SOURCE SECTION ---
           const Text("Data Source",
               style: TextStyle(
                   color: Color(0xFFFF5252), fontWeight: FontWeight.bold, fontSize: 13)),

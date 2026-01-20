@@ -3,16 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/app_providers.dart';
 
 class MainHeader extends ConsumerStatefulWidget {
-  final bool isRefreshing;
-  final VoidCallback onRefresh;
   final VoidCallback onPlaylistsTap;
   final VoidCallback onFilterTap;
   final VoidCallback onSettingsTap;
 
   const MainHeader({
     super.key,
-    required this.isRefreshing,
-    required this.onRefresh,
     required this.onPlaylistsTap,
     required this.onFilterTap,
     required this.onSettingsTap,
@@ -24,19 +20,19 @@ class MainHeader extends ConsumerStatefulWidget {
 
 class _MainHeaderState extends ConsumerState<MainHeader> {
   late final TextEditingController _searchController;
-  late final FocusNode _searchFocusNode; // Added explicit FocusNode
+  late final FocusNode _searchFocusNode;
 
   @override
   void initState() {
     super.initState();
     _searchController = TextEditingController();
-    _searchFocusNode = FocusNode(); // Initialize FocusNode
+    _searchFocusNode = FocusNode();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
-    _searchFocusNode.dispose(); // Dispose FocusNode
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -101,16 +97,7 @@ class _MainHeaderState extends ConsumerState<MainHeader> {
                         ),
                     ],
                   ),
-                  IconButton(
-                    icon: widget.isRefreshing
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54),
-                          )
-                        : const Icon(Icons.refresh_rounded, color: Colors.white54),
-                    onPressed: widget.isRefreshing ? null : widget.onRefresh,
-                  ),
+                  // Refresh button removed from here
                   IconButton(
                     icon: const Icon(Icons.settings_rounded, color: Colors.white54),
                     onPressed: widget.onSettingsTap,
@@ -129,7 +116,7 @@ class _MainHeaderState extends ConsumerState<MainHeader> {
             ),
             child: TextField(
               controller: _searchController,
-              focusNode: _searchFocusNode, // Attach FocusNode
+              focusNode: _searchFocusNode,
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: "Search tracks...",
@@ -140,7 +127,7 @@ class _MainHeaderState extends ConsumerState<MainHeader> {
                         icon: const Icon(Icons.close_rounded, size: 18, color: Colors.white54),
                         onPressed: () {
                           _searchController.clear();
-                          _searchFocusNode.unfocus(); // Unfocus on clear
+                          _searchFocusNode.unfocus();
                           ref.read(searchQueryProvider.notifier).state = "";
                         },
                       )
