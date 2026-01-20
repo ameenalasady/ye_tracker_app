@@ -366,21 +366,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 }
 
-// --- UPDATED QUEUE SHEET COMPONENT ---
-// Changed to ConsumerStatefulWidget to handle initial scroll logic
-class QueueSheet extends ConsumerStatefulWidget {
+// --- UPDATED QUEUE SHEET COMPONENT (Windowed Optimization) ---
+class QueueSheet extends ConsumerWidget {
   const QueueSheet({super.key});
 
   @override
-  ConsumerState<QueueSheet> createState() => _QueueSheetState();
-}
-
-class _QueueSheetState extends ConsumerState<QueueSheet> {
-  // Flag to ensure we only auto-scroll once when opening the sheet
-  bool _hasScrolledToCurrent = false;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final queueAsync = ref.watch(queueProvider);
     final currentItemAsync = ref.watch(currentMediaItemProvider);
     final audioHandler = ref.watch(audioHandlerProvider);
@@ -414,38 +405,31 @@ class _QueueSheetState extends ConsumerState<QueueSheet> {
                     if (queue.isEmpty) return const Center(child: Text("Queue is empty", style: TextStyle(color: Colors.white54)));
 
                     final currentId = currentItemAsync.value?.id;
+                    int currentIndex = -1;
 
-                    // --- AUTO-SCROLL LOGIC ---
-                    // Perform this check every time the builder runs, but execute jump only once
-                    if (!_hasScrolledToCurrent && currentId != null) {
-                      final index = queue.indexWhere((item) => item.id == currentId);
-                      if (index > 0) {
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (scrollController.hasClients) {
-                            // Estimate height (72.0 is standard height for Title+Subtitle ListTile)
-                            // This jumps to show the current song at the top of the visible area
-                            // Users can still scroll up to see previous songs
-                            scrollController.jumpTo(index * 72.0);
-                            if (mounted) {
-                              setState(() {
-                                _hasScrolledToCurrent = true;
-                              });
-                            }
-                          }
-                        });
-                      } else {
-                         // If index is 0 or -1, mark as scrolled so we don't keep trying
-                         _hasScrolledToCurrent = true;
-                      }
+                    // Find index of current song
+                    if (currentId != null) {
+                      currentIndex = queue.indexWhere((item) => item.id == currentId);
                     }
+                    if (currentIndex == -1 && queue.isNotEmpty) {
+                      currentIndex = 0;
+                    }
+
+                    // --- WINDOWING LOGIC ---
+                    // Load 10 before and 10 after
+                    final int startOffset = 10;
+                    final int endOffset = 11; // +1 to include the item itself in the range calculation logic
+
+                    // Calculate bounds safely
+                    final int startIndex = (currentIndex - startOffset).clamp(0, queue.length);
+                    final int endIndex = (currentIndex + endOffset).clamp(0, queue.length);
+
+                    // Create the subset list
+                    final visibleQueue = queue.sublist(startIndex, endIndex);
 
                     return ReorderableListView.builder(
                       scrollController: scrollController,
-                      itemCount: queue.length,
-                      // Adding itemExtent helps performance and makes scrolling smoother
-                      // Standard 2-line ListTile height is roughly 72.0
-                      // If you have variable heights, remove this, but the jumpTo calculation above might be less accurate
-                      // itemExtent: 72.0,
+                      itemCount: visibleQueue.length,
                       proxyDecorator: (child, index, animation) {
                         return Material(
                           color: const Color(0xFF2A2A2A),
@@ -453,25 +437,30 @@ class _QueueSheetState extends ConsumerState<QueueSheet> {
                           child: child,
                         );
                       },
-                      onReorder: (oldIndex, newIndex) {
-                        ref.read(audioHandlerProvider).moveQueueItem(oldIndex, newIndex);
+                      onReorder: (int oldIndex, int newIndex) {
+                        // Map local subset indices back to global indices
+                        final globalOldIndex = startIndex + oldIndex;
+                        final globalNewIndex = startIndex + newIndex;
+
+                        ref.read(audioHandlerProvider).moveQueueItem(globalOldIndex, globalNewIndex);
                       },
                       itemBuilder: (context, index) {
-                        final item = queue[index];
+                        final item = visibleQueue[index];
                         final isPlaying = item.id == currentId;
+                        // Determine the global index for removal logic
+                        final globalIndex = startIndex + index;
 
                         return Dismissible(
-                          key: Key("${item.id}_$index"),
+                          key: Key("${item.id}_$globalIndex"),
                           background: Container(color: Colors.red, alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 20), child: const Icon(Icons.delete, color: Colors.white)),
                           direction: DismissDirection.endToStart,
                           onDismissed: (_) {
-                            audioHandler.removeQueueItemAt(index);
+                            audioHandler.removeQueueItemAt(globalIndex);
                           },
                           child: SizedBox(
-                            // Enforce height for consistent scrolling calculation
                             height: 72,
                             child: ListTile(
-                              key: ValueKey("${item.id}_$index"), // Stable key for reordering
+                              key: ValueKey("${item.id}_$globalIndex"),
                               leading: Container(
                                 width: 40, height: 40,
                                 decoration: BoxDecoration(
@@ -490,7 +479,7 @@ class _QueueSheetState extends ConsumerState<QueueSheet> {
                                 child: const Icon(Icons.drag_handle_rounded, color: Colors.white24),
                               ),
                               onTap: () {
-                                audioHandler.skipToQueueItem(index);
+                                audioHandler.skipToQueueItem(globalIndex);
                               },
                             ),
                           ),
