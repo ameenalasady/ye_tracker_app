@@ -69,10 +69,12 @@ class DownloadManager extends ChangeNotifier {
       return;
     }
 
-    // Check if already in queue/downloading
+    // 2. Check if already in queue/downloading (The Gatekeeper)
+    // This check prevents duplicates.
     if (isDownloading(track.effectiveUrl)) return;
 
-    // 2. Check Existance (Fast Path)
+    // 3. Check Existence (Fast Path)
+    // If we already have the file, we don't need to create a task at all.
     final downloadsBox = Hive.box('downloads');
     final existingPath = downloadsBox.get(track.effectiveUrl);
 
@@ -90,21 +92,28 @@ class DownloadManager extends ChangeNotifier {
       return;
     }
 
-    // 3. Permissions
+    // 4. Create Task and Add to List IMMEDIATELY
+    // FIX: We add the task *before* awaiting permissions.
+    // This acts as a synchronous lock. Any subsequent calls for this URL
+    // will now fail the `isDownloading` check at step 2.
+    final task = DownloadTask(track: track);
+    _tasks.add(task);
+    notifyListeners(); // Update UI immediately
+
+    // 5. Permissions
     if (Platform.isAndroid) {
+      // This await caused the race condition previously
       final status = await Permission.storage.request();
       if (status.isPermanentlyDenied) {
+        // If permission fails, we must unlock the queue by removing the task
+        _tasks.remove(task);
+        notifyListeners();
         onError?.call("Storage permission denied");
         return;
       }
     }
 
-    // 4. Create Task and Add to List
-    final task = DownloadTask(track: track);
-    _tasks.add(task);
-    notifyListeners(); // Update UI immediately
-
-    // 5. Process Queue
+    // 6. Process Queue
     _processQueue();
   }
 
@@ -168,8 +177,6 @@ class DownloadManager extends ChangeNotifier {
             // Indeterminate
             task.statusMessage = "Downloading...";
           }
-          // Notify listeners occasionally or on significant change to avoid UI spam?
-          // For simplicity, we notify. Dio doesn't fire this too insanely fast.
           notifyListeners();
         },
       );
@@ -193,11 +200,6 @@ class DownloadManager extends ChangeNotifier {
       task.statusMessage = "Failed";
       debugPrint("Download Error: $e");
     } finally {
-      // Remove completed/failed tasks after a delay, or keep them?
-      // Let's keep them in the UI for a moment, then remove or let user clear.
-      // For this implementation, we remove completed tasks from the active list logic
-      // but keeping them in memory allows the UI to show "Done".
-      // Let's trigger the queue for the next item.
       notifyListeners();
       _processQueue();
 

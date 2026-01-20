@@ -113,6 +113,11 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         return source.tag as MediaItem;
       }).toList();
       queue.add(newQueue);
+
+      // --- FIX: Trigger preload when the sequence is fully loaded ---
+      // This catches the first song load where currentIndex might fire
+      // before effectiveIndices are ready.
+      _schedulePreload();
     });
   }
 
@@ -289,6 +294,9 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
     try {
       await _player.setAudioSource(_playlist!, initialIndex: initialIndex);
+      // --- FIX: Explicitly schedule preload after source setup ---
+      // This ensures the current song downloads immediately on first play
+      _schedulePreload();
       play();
     } catch (e) {
       debugPrint("Error playing playlist: $e");
