@@ -39,9 +39,6 @@ class TracksRepository {
     final box = await _openBoxForTab(tab);
 
     // FIX: If we have data, return it immediately (Cache First).
-    // This ensures offline mode works instantly.
-    // To get new data, the user must use "Pull to Refresh" in the UI,
-    // which calls clearLocalCache().
     if (box.isNotEmpty) {
       return box.values.toList();
     }
@@ -50,21 +47,34 @@ class TracksRepository {
       // Fetch from network if cache is empty
       final tracks = await _parser.fetchTracksForTab(tab.gid);
 
-      // --- FIX: Restore Download State ---
-      // Cross-reference with the Global Downloads Registry.
-      // If the URL exists in 'downloads' box and the file exists,
-      // set the localPath on this new Track object.
       final downloadsBox = Hive.box('downloads');
+      final eraImagesBox = Hive.box('era_images'); // Access global era images
+
+      // --- NEW: Harvest & Apply Era Images ---
+      // 1. Harvest: If a track has an image, save it to the global era_images box
+      for (var track in tracks) {
+        if (track.albumArtUrl.isNotEmpty) {
+          eraImagesBox.put(track.era, track.albumArtUrl);
+        }
+      }
 
       for (var track in tracks) {
+        // --- Restore Download State ---
         final savedPath = downloadsBox.get(track.effectiveUrl);
         if (savedPath != null && savedPath is String) {
           if (File(savedPath).existsSync()) {
             track.localPath = savedPath;
           } else {
-            // File was deleted manually from disk? Remove from registry.
             downloadsBox.delete(track.effectiveUrl);
           }
+        }
+
+        // --- Apply Global Era Image if missing ---
+        // (Note: track.effectiveAlbumArt handles this dynamically, but saving it here
+        // helps if we export the data later, though strictly not necessary with the getter)
+        if (track.albumArtUrl.isEmpty) {
+           // We don't overwrite the field because it's final,
+           // but the UI will use the getter 'effectiveAlbumArt' which checks the box.
         }
       }
 

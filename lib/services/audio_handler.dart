@@ -280,11 +280,14 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     // Also store by effectiveUrl to be safe for reverse lookups if needed
     _trackCache[track.effectiveUrl] = track;
 
+    // --- CHANGED: Use effectiveAlbumArt to check global store ---
+    final artUrl = track.effectiveAlbumArt;
+
     return MediaItem(
       id: uri,
       title: track.title,
       artist: track.artist.isEmpty ? (track.era.isNotEmpty ? track.era : "Ye Tracker") : track.artist,
-      artUri: track.albumArtUrl.isNotEmpty ? Uri.tryParse(track.albumArtUrl) : null,
+      artUri: artUrl.isNotEmpty ? Uri.tryParse(artUrl) : null,
       extras: null,
     );
   }

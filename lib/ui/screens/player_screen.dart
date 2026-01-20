@@ -366,7 +366,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 }
 
-// --- UPDATED QUEUE SHEET COMPONENT (Windowed Optimization) ---
+// --- QUEUE SHEET COMPONENT ---
 class QueueSheet extends ConsumerWidget {
   const QueueSheet({super.key});
 

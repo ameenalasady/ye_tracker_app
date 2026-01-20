@@ -69,6 +69,17 @@ class Track extends HiveObject {
     return _searchIndex!;
   }
 
+  /// --- NEW: Gets album art. If missing, checks the global Era Image store. ---
+  String get effectiveAlbumArt {
+    if (albumArtUrl.isNotEmpty) return albumArtUrl;
+
+    // Fallback: Check global era_images box
+    if (Hive.isBoxOpen('era_images')) {
+      return Hive.box('era_images').get(era, defaultValue: '') as String;
+    }
+    return '';
+  }
+
   int get durationInSeconds {
     try {
       if (!length.contains(':')) return 0;

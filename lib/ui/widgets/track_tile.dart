@@ -169,6 +169,9 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
     final Color cardColor = const Color(0xFF252525);
     final Color activeBorderColor = const Color(0xFFFF5252);
 
+    // --- CHANGED: Use effectiveAlbumArt ---
+    final artUrl = t.effectiveAlbumArt;
+
     return GestureDetector(
       onLongPress: () => _showAddToPlaylistSheet(context, t),
       onTap: () async {
@@ -221,11 +224,11 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
                     color: isCurrentTrack ? activeBorderColor.withAlpha((0.15 * 255).toInt()) : Colors.white.withAlpha((0.05 * 255).toInt()),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: t.albumArtUrl.isNotEmpty
+                  child: artUrl.isNotEmpty
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: CachedNetworkImage(
-                            imageUrl: t.albumArtUrl,
+                            imageUrl: artUrl,
                             httpHeaders: Track.imageHeaders,
                             fit: BoxFit.cover,
                             placeholder: (context, url) => Center(child: _buildLeadingIcon(isCurrentTrack, isPlaying, isBuffering)),
@@ -234,7 +237,7 @@ class _TrackTileState extends ConsumerState<TrackTile> with SingleTickerProvider
                         )
                       : Center(child: _buildLeadingIcon(isCurrentTrack, isPlaying, isBuffering)),
                 ),
-                if (t.albumArtUrl.isNotEmpty && (isBuffering || (isCurrentTrack && isPlaying)))
+                if (artUrl.isNotEmpty && (isBuffering || (isCurrentTrack && isPlaying)))
                   Container(
                     width: 50,
                     height: 50,

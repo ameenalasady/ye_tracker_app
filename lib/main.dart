@@ -31,6 +31,8 @@ Future<void> main() async {
   await Hive.openBox<Playlist>('playlists');
   await Hive.openBox<SheetTab>('tabs');
   await Hive.openBox('downloads');
+  // --- NEW: Global store for Era Images ---
+  await Hive.openBox('era_images');
 
   // Initialize Download Manager (Singleton for the app life)
   final downloadManager = DownloadManager();

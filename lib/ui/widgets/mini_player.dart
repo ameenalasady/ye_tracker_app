@@ -23,11 +23,8 @@ class MiniPlayer extends ConsumerWidget {
     final isLoading = processingState == AudioProcessingState.loading || processingState == AudioProcessingState.buffering;
 
     return GestureDetector(
-      // --- ADDED: Swipe Gestures ---
+      // --- Swipe Gestures ---
       onHorizontalDragEnd: (details) {
-        // Check primaryVelocity to determine direction
-        // < 0 is Left Swipe (Next)
-        // > 0 is Right Swipe (Previous)
         if (details.primaryVelocity == null) return;
 
         if (details.primaryVelocity! < 0) {
@@ -36,10 +33,7 @@ class MiniPlayer extends ConsumerWidget {
           audioHandler.skipToPrevious();
         }
       },
-      // --- End Added Gestures ---
       onTap: () {
-        // Explicitly unfocus any active text fields (like search)
-        // before pushing the new route. This prevents keyboard popping up on return.
         FocusScope.of(context).unfocus();
 
         Navigator.of(context).push(
