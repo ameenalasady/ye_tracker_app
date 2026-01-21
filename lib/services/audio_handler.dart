@@ -195,8 +195,22 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   @override
   Future<void> skipToNext() => _player.seekToNext();
 
+  /// Standard skipToPrevious logic (mimics Spotify):
+  /// - If > 3 seconds in, restart song.
+  /// - If < 3 seconds in, go to previous track.
   @override
-  Future<void> skipToPrevious() => _player.seekToPrevious();
+  Future<void> skipToPrevious() async {
+    // Check if we are past the 3-second mark
+    if (_player.position.inSeconds > 3) {
+      return _player.seek(Duration.zero);
+    } else {
+      return _player.seekToPrevious();
+    }
+  }
+
+  /// Forced skip to previous, ignoring current position.
+  /// Used for gestures (e.g. MiniPlayer swipe).
+  Future<void> skipToPreviousForced() => _player.seekToPrevious();
 
   @override
   Future<void> skipToQueueItem(int index) async {

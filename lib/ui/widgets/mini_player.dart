@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/track.dart';
 import '../../providers/app_providers.dart';
+import '../../services/audio_handler.dart'; // Import to access MyAudioHandler
 import '../screens/player_screen.dart';
 
 class MiniPlayer extends ConsumerStatefulWidget {
@@ -53,7 +54,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
     });
   }
 
-  void _handleDragEnd(DragEndDetails details, AudioHandler handler) {
+  void _handleDragEnd(DragEndDetails details, MyAudioHandler handler) {
     if (_isSwipingOut) return;
 
     final width = MediaQuery.of(context).size.width;
@@ -71,7 +72,9 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
     else if (_dragOffset > threshold || velocity > 500) {
       _animateTo(width, () {
         _isSwipingOut = true;
-        handler.skipToPrevious();
+        // CHANGED: Use forced skip for gestures to ensure we go to previous
+        // song instead of restarting the current one.
+        handler.skipToPreviousForced();
       });
     }
     // Spring back
@@ -97,7 +100,8 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
 
   @override
   Widget build(BuildContext context) {
-    final audioHandler = ref.watch(audioHandlerProvider);
+    // Explicitly type as MyAudioHandler to access custom methods
+    final MyAudioHandler audioHandler = ref.watch(audioHandlerProvider);
     final mediaItemAsync = ref.watch(currentMediaItemProvider);
     final playbackStateAsync = ref.watch(playbackStateProvider);
 
