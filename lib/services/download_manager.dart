@@ -58,6 +58,16 @@ class DownloadManager extends ChangeNotifier {
       .map((t) => t.id)
       .toSet();
 
+  /// Checks if the device has an active internet connection using dart:io
+  Future<bool> _hasInternetConnection() async {
+    try {
+      final result = await InternetAddress.lookup('google.com');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } on SocketException catch (_) {
+      return false;
+    }
+  }
+
   Future<void> downloadTrack(
     Track track, {
     VoidCallback? onSuccess,
@@ -73,7 +83,7 @@ class DownloadManager extends ChangeNotifier {
     // This check prevents duplicates.
     if (isDownloading(track.effectiveUrl)) return;
 
-    // 3. Check Existence (Fast Path)
+    // 3. Check Existence (Fast Path) - Works Offline
     // If we already have the file, we don't need to create a task at all.
     final downloadsBox = Hive.box('downloads');
     final existingPath = downloadsBox.get(track.effectiveUrl);
@@ -92,7 +102,15 @@ class DownloadManager extends ChangeNotifier {
       return;
     }
 
-    // 4. Create Task and Add to List IMMEDIATELY
+    // 4. Connectivity Check (NEW)
+    // Only check for internet if we actually need to download the file.
+    final isOnline = await _hasInternetConnection();
+    if (!isOnline) {
+      onError?.call("No Internet Connection");
+      return;
+    }
+
+    // 5. Create Task and Add to List IMMEDIATELY
     // FIX: We add the task *before* awaiting permissions.
     // This acts as a synchronous lock. Any subsequent calls for this URL
     // will now fail the `isDownloading` check at step 2.
@@ -100,7 +118,7 @@ class DownloadManager extends ChangeNotifier {
     _tasks.add(task);
     notifyListeners(); // Update UI immediately
 
-    // 5. Permissions
+    // 6. Permissions
     if (Platform.isAndroid) {
       // This await caused the race condition previously
       final status = await Permission.storage.request();
@@ -113,7 +131,7 @@ class DownloadManager extends ChangeNotifier {
       }
     }
 
-    // 6. Process Queue
+    // 7. Process Queue
     _processQueue();
   }
 
