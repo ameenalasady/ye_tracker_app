@@ -114,9 +114,9 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       }).toList();
       queue.add(newQueue);
 
-      // --- FIX: Trigger preload when the sequence is fully loaded ---
-      // This catches the first song load where currentIndex might fire
-      // before effectiveIndices are ready.
+      // Trigger preload when the sequence is fully loaded.
+      // We rely on explicit calls in move/remove as well, but this covers
+      // initial loads or external changes.
       _schedulePreload();
     });
   }
@@ -161,9 +161,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         _downloadByIndex(nextIndex);
       } else {
         // If auto-download is OFF, just_audio automatically buffers the
-        // immediate next item in the ConcatenatingAudioSource.
-        // We don't force a disk download here to respect the user's "No Download" setting,
-        // effectively treating "load in memory" as the player's native buffering.
+        // immediate next item.
       }
     }
   }
@@ -253,6 +251,8 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   Future<void> addQueueItem(MediaItem mediaItem) async {
     final audioSource = _createAudioSource(mediaItem);
     await _playlist?.add(audioSource);
+    // Trigger preload in case the added item falls within the preload window
+    _schedulePreload();
   }
 
   @override
@@ -264,6 +264,10 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       );
       if (rawIndex != -1) {
         await _playlist!.removeAt(rawIndex);
+        // FIX: Trigger preload immediately after removal.
+        // If we remove the "Up Next" song, the one after it becomes the new "Next"
+        // and needs to be downloaded.
+        _schedulePreload();
       }
     }
   }
@@ -274,6 +278,10 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         newIndex -= 1;
       }
       await _playlist?.move(oldIndex, newIndex);
+      // FIX: Trigger preload immediately after move.
+      // This ensures if a song is dragged into the "Up Next" slot or within
+      // the preload window, it gets downloaded immediately.
+      _schedulePreload();
     }
   }
 
@@ -294,8 +302,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
     try {
       await _player.setAudioSource(_playlist!, initialIndex: initialIndex);
-      // --- FIX: Explicitly schedule preload after source setup ---
-      // This ensures the current song downloads immediately on first play
+      // Explicitly schedule preload after source setup
       _schedulePreload();
       play();
     } catch (e) {

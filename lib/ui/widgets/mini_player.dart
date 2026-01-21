@@ -19,7 +19,6 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
   late AnimationController _animController;
   late Animation<double> _offsetAnimation;
   double _dragOffset = 0.0;
-  bool _isDragging = false;
 
   // Track logic state
   bool _isSwipingOut = false;
@@ -50,7 +49,6 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
   void _handleDragUpdate(DragUpdateDetails details) {
     if (_isSwipingOut) return;
     setState(() {
-      _isDragging = true;
       _dragOffset += details.delta.dx;
     });
   }
@@ -58,7 +56,6 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
   void _handleDragEnd(DragEndDetails details, AudioHandler handler) {
     if (_isSwipingOut) return;
 
-    _isDragging = false;
     final width = MediaQuery.of(context).size.width;
     final threshold = width * 0.25; // Swipe 25% to trigger
     final velocity = details.primaryVelocity ?? 0;
@@ -153,7 +150,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
         FocusScope.of(context).unfocus();
         Navigator.of(context).push(
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const PlayerScreen(),
+            pageBuilder: (_, _, _) => const PlayerScreen(),
             transitionsBuilder: (_, animation, _, child) {
               const curve = Curves.easeOutQuart;
               var tween = Tween(begin: const Offset(0.0, 1.0), end: Offset.zero)
