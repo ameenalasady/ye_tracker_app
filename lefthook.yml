@@ -1,13 +1,18 @@
-# lefthook.yml
+# Pre-commit hooks configuration for code quality
 pre-commit:
   parallel: true
+  skip:
+    - merge
+    - rebase
   commands:
-    # 1. Format Code
     format:
       glob: "lib/**/*.dart"
       run: dart format {staged_files} && git add {staged_files}
 
-    # 2. Lint Code
     analyze:
       glob: "lib/**/*.dart"
-      run: flutter analyze
+      run: flutter analyze --fatal-infos
+
+    lint:
+      glob: "pubspec.yaml"
+      run: dart pub get
