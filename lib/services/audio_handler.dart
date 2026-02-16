@@ -7,7 +7,6 @@ import '../models/track.dart';
 import 'download_manager.dart'; // Import
 
 class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
-
   // Constructor accepts DownloadManager
   MyAudioHandler(this.downloadManager) {
     _loadEmptyPlaylist();
@@ -107,7 +106,9 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     _player.sequenceStateStream.listen((sequenceState) {
       if (sequenceState == null) return;
       final sequence = sequenceState.effectiveSequence;
-      final newQueue = sequence.map((source) => source.tag as MediaItem).toList();
+      final newQueue = sequence
+          .map((source) => source.tag as MediaItem)
+          .toList();
       queue.add(newQueue);
 
       // Trigger preload when the sequence is fully loaded.

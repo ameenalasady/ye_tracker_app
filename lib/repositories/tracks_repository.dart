@@ -5,7 +5,6 @@ import '../models/track.dart';
 import '../services/tracker_parser.dart';
 
 class TracksRepository {
-
   TracksRepository({required String sourceUrl})
     : _parser = TrackerParser(sourceUrl);
   final TrackerParser _parser;

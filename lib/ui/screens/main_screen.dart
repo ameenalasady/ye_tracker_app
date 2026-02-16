@@ -80,30 +80,30 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        body: Stack(
+    body: Stack(
+      children: [
+        Column(
           children: [
-            Column(
-              children: [
-                const SizedBox(height: 50),
-                // --- Component: Header ---
-                MainHeader(
-                  onPlaylistsTap: () => _showPlaylistsSheet(context),
-                  onFilterTap: () => _showFilterSheet(context),
-                  onSettingsTap: () => _showSettingsSheet(context),
-                ),
-                const SizedBox(height: 16),
-                // --- Component: Tab Selector ---
-                const EraTabSelector(),
-                const SizedBox(height: 10),
-                // --- Component: Track List ---
-                const Expanded(child: TrackList()),
-              ],
+            const SizedBox(height: 50),
+            // --- Component: Header ---
+            MainHeader(
+              onPlaylistsTap: () => _showPlaylistsSheet(context),
+              onFilterTap: () => _showFilterSheet(context),
+              onSettingsTap: () => _showSettingsSheet(context),
             ),
-            // --- Component: Mini Player ---
-            const Align(alignment: Alignment.bottomCenter, child: MiniPlayer()),
+            const SizedBox(height: 16),
+            // --- Component: Tab Selector ---
+            const EraTabSelector(),
+            const SizedBox(height: 10),
+            // --- Component: Track List ---
+            const Expanded(child: TrackList()),
           ],
         ),
-      );
+        // --- Component: Mini Player ---
+        const Align(alignment: Alignment.bottomCenter, child: MiniPlayer()),
+      ],
+    ),
+  );
 }
 
 // --- PUBLIC DIALOGS (Accessible from Settings) ---
@@ -114,85 +114,85 @@ class UpdateAvailableDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-      backgroundColor: const Color(0xFF252525),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFF5252).withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.new_releases_rounded,
-              color: Color(0xFFFF5252),
-            ),
+    backgroundColor: const Color(0xFF252525),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+    title: Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFF5252).withValues(alpha: 0.2),
+            shape: BoxShape.circle,
           ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Text(
-              'Update Available',
-              style: TextStyle(color: Colors.white, fontSize: 20),
-            ),
+          child: const Icon(
+            Icons.new_releases_rounded,
+            color: Color(0xFFFF5252),
           ),
-        ],
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Version ${release.tagName} is now available.',
-            style: const TextStyle(
-              color: Colors.white70,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            constraints: const BoxConstraints(maxHeight: 200),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E1E1E),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white10),
-            ),
-            child: SingleChildScrollView(
-              child: Text(
-                release.body,
-                style: const TextStyle(color: Colors.white60, fontSize: 13),
-              ),
-            ),
-          ),
-        ],
-      ),
-      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Later', style: TextStyle(color: Colors.white54)),
         ),
-        FilledButton(
-          style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFFFF5252),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+        const SizedBox(width: 12),
+        const Expanded(
+          child: Text(
+            'Update Available',
+            style: TextStyle(color: Colors.white, fontSize: 20),
           ),
-          onPressed: () {
-            Navigator.pop(context);
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (context) => UpdateDownloadDialog(release: release),
-            );
-          },
-          child: const Text('Update Now'),
         ),
       ],
-    );
+    ),
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Version ${release.tagName} is now available.',
+          style: const TextStyle(
+            color: Colors.white70,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          constraints: const BoxConstraints(maxHeight: 200),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1E1E),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white10),
+          ),
+          child: SingleChildScrollView(
+            child: Text(
+              release.body,
+              style: const TextStyle(color: Colors.white60, fontSize: 13),
+            ),
+          ),
+        ),
+      ],
+    ),
+    actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Later', style: TextStyle(color: Colors.white54)),
+      ),
+      FilledButton(
+        style: FilledButton.styleFrom(
+          backgroundColor: const Color(0xFFFF5252),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        onPressed: () {
+          Navigator.pop(context);
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => UpdateDownloadDialog(release: release),
+          );
+        },
+        child: const Text('Update Now'),
+      ),
+    ],
+  );
 }
 
 class UpdateDownloadDialog extends ConsumerStatefulWidget {

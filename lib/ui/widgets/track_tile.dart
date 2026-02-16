@@ -9,7 +9,6 @@ import '../../models/track.dart';
 import '../../providers/app_providers.dart';
 
 class TrackTile extends ConsumerStatefulWidget {
-
   const TrackTile({required this.track, this.onTapOverride, super.key});
   final Track track;
   final VoidCallback? onTapOverride;
@@ -417,20 +416,20 @@ class _TrackTileState extends ConsumerState<TrackTile>
       return AnimatedBuilder(
         animation: _animController,
         builder: (context, child) => SizedBox(
-            height: 24,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildBar(0),
-                const SizedBox(width: 3),
-                _buildBar(1),
-                const SizedBox(width: 3),
-                _buildBar(2),
-              ],
-            ),
+          height: 24,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildBar(0),
+              const SizedBox(width: 3),
+              _buildBar(1),
+              const SizedBox(width: 3),
+              _buildBar(2),
+            ],
           ),
+        ),
       );
     }
     return Icon(

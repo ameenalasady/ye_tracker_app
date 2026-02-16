@@ -3,7 +3,6 @@ import 'track.dart';
 
 @HiveType(typeId: 2)
 class Playlist extends HiveObject {
-
   Playlist({required this.name, required this.tracks});
   @HiveField(0)
   String name;
@@ -18,9 +17,9 @@ class PlaylistAdapter extends TypeAdapter<Playlist> {
 
   @override
   Playlist read(BinaryReader reader) => Playlist(
-      name: reader.read(),
-      tracks: (reader.read() as List).cast<Track>(),
-    );
+    name: reader.read(),
+    tracks: (reader.read() as List).cast<Track>(),
+  );
 
   @override
   void write(BinaryWriter writer, Playlist obj) {

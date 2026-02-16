@@ -482,195 +482,191 @@ class _QueueSheetState extends ConsumerState<QueueSheet> {
       maxChildSize: 0.9,
       expand: false,
       builder: (_, scrollController) => Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF1E1E1E),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-          ),
-          child: Column(
-            children: [
-              const SizedBox(height: 12),
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Up Next',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: queueAsync.when(
-                  data: (queue) {
-                    if (queue.isEmpty) {
-                      return const Center(
-                        child: Text(
-                          'Queue is empty',
-                          style: TextStyle(color: Colors.white54),
-                        ),
-                      );
-                    }
-
-                    final currentId = currentItemAsync.value?.id;
-                    var currentIndex = -1;
-
-                    // Find index of current song
-                    if (currentId != null) {
-                      currentIndex = queue.indexWhere(
-                        (item) => item.id == currentId,
-                      );
-                    }
-                    if (currentIndex == -1 && queue.isNotEmpty) {
-                      currentIndex = 0;
-                    }
-
-                    // --- WINDOWING LOGIC ---
-                    // Load 10 before and 10 after
-                    const startOffset = 10;
-                    const endOffset =
-                        11; // +1 to include the item itself in the range calculation logic
-
-                    // Calculate bounds safely
-                    final startIndex = (currentIndex - startOffset).clamp(
-                      0,
-                      queue.length,
-                    );
-                    final endIndex = (currentIndex + endOffset).clamp(
-                      0,
-                      queue.length,
-                    );
-
-                    // Create the subset list
-                    final visibleQueue = queue.sublist(startIndex, endIndex);
-
-                    // --- SCROLL TO CURRENT SONG LOGIC ---
-                    if (!_initialScrollPerformed && visibleQueue.isNotEmpty) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (scrollController.hasClients) {
-                          // Calculate where the current song is relative to the *visible* list
-                          final relativeIndex = currentIndex - startIndex;
-                          if (relativeIndex > 0) {
-                            // 72 is the height of the SizedBox/ListTile below
-                            final offset = relativeIndex * 72.0;
-                            scrollController.jumpTo(offset);
-                          }
-                          _initialScrollPerformed = true;
-                        }
-                      });
-                    }
-
-                    return ReorderableListView.builder(
-                      scrollController: scrollController,
-                      itemCount: visibleQueue.length,
-                      proxyDecorator: (child, index, animation) => Material(
-                          color: const Color(0xFF2A2A2A),
-                          elevation: 6,
-                          child: child,
-                        ),
-                      onReorder: (int oldIndex, int newIndex) {
-                        // Map local subset indices back to global indices
-                        final globalOldIndex = startIndex + oldIndex;
-                        final globalNewIndex = startIndex + newIndex;
-
-                        ref
-                            .read(audioHandlerProvider)
-                            .moveQueueItem(globalOldIndex, globalNewIndex);
-                      },
-                      itemBuilder: (context, index) {
-                        final item = visibleQueue[index];
-                        final isPlaying = item.id == currentId;
-                        // Determine the global index for removal logic
-                        final globalIndex = startIndex + index;
-
-                        return Dismissible(
-                          key: Key('${item.id}_$globalIndex'),
-                          background: Container(
-                            color: Colors.red,
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.only(right: 20),
-                            child: const Icon(
-                              Icons.delete,
-                              color: Colors.white,
-                            ),
-                          ),
-                          direction: DismissDirection.endToStart,
-                          onDismissed: (_) {
-                            audioHandler.removeQueueItemAt(globalIndex);
-                          },
-                          child: SizedBox(
-                            height: 72,
-                            child: ListTile(
-                              key: ValueKey('${item.id}_$globalIndex'),
-                              leading: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: isPlaying
-                                      ? const Color(
-                                          0xFFFF5252,
-                                        ).withValues(alpha: 0.2)
-                                      : const Color(0xFF2A2A2A),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: isPlaying
-                                    ? const Icon(
-                                        Icons.graphic_eq,
-                                        color: Color(0xFFFF5252),
-                                      )
-                                    : const Icon(
-                                        Icons.music_note,
-                                        color: Colors.white24,
-                                      ),
-                              ),
-                              title: Text(
-                                item.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: isPlaying
-                                      ? const Color(0xFFFF5252)
-                                      : Colors.white,
-                                ),
-                              ),
-                              subtitle: Text(
-                                item.artist ?? '',
-                                maxLines: 1,
-                                style: const TextStyle(color: Colors.white54),
-                              ),
-                              trailing: ReorderableDragStartListener(
-                                index: index,
-                                child: const Icon(
-                                  Icons.drag_handle_rounded,
-                                  color: Colors.white24,
-                                ),
-                              ),
-                              onTap: () {
-                                audioHandler.skipToQueueItem(globalIndex);
-                              },
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (_, _) => const SizedBox(),
-                ),
-              ),
-            ],
-          ),
+        decoration: const BoxDecoration(
+          color: Color(0xFF1E1E1E),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
         ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Up Next',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: queueAsync.when(
+                data: (queue) {
+                  if (queue.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'Queue is empty',
+                        style: TextStyle(color: Colors.white54),
+                      ),
+                    );
+                  }
+
+                  final currentId = currentItemAsync.value?.id;
+                  var currentIndex = -1;
+
+                  // Find index of current song
+                  if (currentId != null) {
+                    currentIndex = queue.indexWhere(
+                      (item) => item.id == currentId,
+                    );
+                  }
+                  if (currentIndex == -1 && queue.isNotEmpty) {
+                    currentIndex = 0;
+                  }
+
+                  // --- WINDOWING LOGIC ---
+                  // Load 10 before and 10 after
+                  const startOffset = 10;
+                  const endOffset =
+                      11; // +1 to include the item itself in the range calculation logic
+
+                  // Calculate bounds safely
+                  final startIndex = (currentIndex - startOffset).clamp(
+                    0,
+                    queue.length,
+                  );
+                  final endIndex = (currentIndex + endOffset).clamp(
+                    0,
+                    queue.length,
+                  );
+
+                  // Create the subset list
+                  final visibleQueue = queue.sublist(startIndex, endIndex);
+
+                  // --- SCROLL TO CURRENT SONG LOGIC ---
+                  if (!_initialScrollPerformed && visibleQueue.isNotEmpty) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (scrollController.hasClients) {
+                        // Calculate where the current song is relative to the *visible* list
+                        final relativeIndex = currentIndex - startIndex;
+                        if (relativeIndex > 0) {
+                          // 72 is the height of the SizedBox/ListTile below
+                          final offset = relativeIndex * 72.0;
+                          scrollController.jumpTo(offset);
+                        }
+                        _initialScrollPerformed = true;
+                      }
+                    });
+                  }
+
+                  return ReorderableListView.builder(
+                    scrollController: scrollController,
+                    itemCount: visibleQueue.length,
+                    proxyDecorator: (child, index, animation) => Material(
+                      color: const Color(0xFF2A2A2A),
+                      elevation: 6,
+                      child: child,
+                    ),
+                    onReorder: (int oldIndex, int newIndex) {
+                      // Map local subset indices back to global indices
+                      final globalOldIndex = startIndex + oldIndex;
+                      final globalNewIndex = startIndex + newIndex;
+
+                      ref
+                          .read(audioHandlerProvider)
+                          .moveQueueItem(globalOldIndex, globalNewIndex);
+                    },
+                    itemBuilder: (context, index) {
+                      final item = visibleQueue[index];
+                      final isPlaying = item.id == currentId;
+                      // Determine the global index for removal logic
+                      final globalIndex = startIndex + index;
+
+                      return Dismissible(
+                        key: Key('${item.id}_$globalIndex'),
+                        background: Container(
+                          color: Colors.red,
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          child: const Icon(Icons.delete, color: Colors.white),
+                        ),
+                        direction: DismissDirection.endToStart,
+                        onDismissed: (_) {
+                          audioHandler.removeQueueItemAt(globalIndex);
+                        },
+                        child: SizedBox(
+                          height: 72,
+                          child: ListTile(
+                            key: ValueKey('${item.id}_$globalIndex'),
+                            leading: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: isPlaying
+                                    ? const Color(
+                                        0xFFFF5252,
+                                      ).withValues(alpha: 0.2)
+                                    : const Color(0xFF2A2A2A),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: isPlaying
+                                  ? const Icon(
+                                      Icons.graphic_eq,
+                                      color: Color(0xFFFF5252),
+                                    )
+                                  : const Icon(
+                                      Icons.music_note,
+                                      color: Colors.white24,
+                                    ),
+                            ),
+                            title: Text(
+                              item.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: isPlaying
+                                    ? const Color(0xFFFF5252)
+                                    : Colors.white,
+                              ),
+                            ),
+                            subtitle: Text(
+                              item.artist ?? '',
+                              maxLines: 1,
+                              style: const TextStyle(color: Colors.white54),
+                            ),
+                            trailing: ReorderableDragStartListener(
+                              index: index,
+                              child: const Icon(
+                                Icons.drag_handle_rounded,
+                                color: Colors.white24,
+                              ),
+                            ),
+                            onTap: () {
+                              audioHandler.skipToQueueItem(globalIndex);
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (_, _) => const SizedBox(),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

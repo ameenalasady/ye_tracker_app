@@ -39,42 +39,45 @@ class PlaylistDetailScreen extends ConsumerWidget {
       ),
       body: Stack(
         children: [
-          if (updatedPlaylist.tracks.isEmpty) const Center(
-                  child: Text(
-                    'No tracks in this playlist.',
-                    style: TextStyle(color: Colors.white54),
+          if (updatedPlaylist.tracks.isEmpty)
+            const Center(
+              child: Text(
+                'No tracks in this playlist.',
+                style: TextStyle(color: Colors.white54),
+              ),
+            )
+          else
+            ListView.builder(
+              padding: const EdgeInsets.only(bottom: 100),
+              itemCount: updatedPlaylist.tracks.length,
+              itemBuilder: (context, index) {
+                final track = updatedPlaylist.tracks[index];
+                return Dismissible(
+                  key: Key('${track.effectiveUrl}_$index'),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 20),
+                    color: Colors.red,
+                    child: const Icon(Icons.delete, color: Colors.white),
                   ),
-                ) else ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 100),
-                  itemCount: updatedPlaylist.tracks.length,
-                  itemBuilder: (context, index) {
-                    final track = updatedPlaylist.tracks[index];
-                    return Dismissible(
-                      key: Key('${track.effectiveUrl}_$index'),
-                      direction: DismissDirection.endToStart,
-                      background: Container(
-                        alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.only(right: 20),
-                        color: Colors.red,
-                        child: const Icon(Icons.delete, color: Colors.white),
-                      ),
-                      onDismissed: (_) {
-                        ref
-                            .read(playlistsProvider.notifier)
-                            .removeTrackFromPlaylist(updatedPlaylist, track);
-                      },
-                      child: TrackTile(
-                        track: track,
-                        // Override tap to play the playlist queue starting from this track
-                        onTapOverride: () {
-                          ref
-                              .read(audioHandlerProvider)
-                              .playPlaylist(updatedPlaylist.tracks, index);
-                        },
-                      ),
-                    );
+                  onDismissed: (_) {
+                    ref
+                        .read(playlistsProvider.notifier)
+                        .removeTrackFromPlaylist(updatedPlaylist, track);
                   },
-                ),
+                  child: TrackTile(
+                    track: track,
+                    // Override tap to play the playlist queue starting from this track
+                    onTapOverride: () {
+                      ref
+                          .read(audioHandlerProvider)
+                          .playPlaylist(updatedPlaylist.tracks, index);
+                    },
+                  ),
+                );
+              },
+            ),
           const Align(alignment: Alignment.bottomCenter, child: MiniPlayer()),
         ],
       ),

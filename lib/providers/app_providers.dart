@@ -22,7 +22,9 @@ final searchQueryProvider = StateProvider<String>((ref) => '');
 final updateManagerProvider = Provider<UpdateManager>((ref) => UpdateManager());
 
 // --- NEW: Package Info Provider ---
-final packageInfoProvider = FutureProvider<PackageInfo>((ref) async => PackageInfo.fromPlatform());
+final packageInfoProvider = FutureProvider<PackageInfo>(
+  (ref) async => PackageInfo.fromPlatform(),
+);
 
 // --- REPOSITORY PROVIDER ---
 final tracksRepositoryProvider = Provider<TracksRepository>((ref) {
@@ -47,9 +49,9 @@ final sortOptionProvider = StateProvider<SortOption>(
 final selectedErasProvider = StateProvider<Set<String>>((ref) => {});
 
 // --- SETTINGS PROVIDERS ---
-final autoDownloadProvider = StateNotifierProvider<AutoDownloadNotifier, bool>((
-  ref,
-) => AutoDownloadNotifier());
+final autoDownloadProvider = StateNotifierProvider<AutoDownloadNotifier, bool>(
+  (ref) => AutoDownloadNotifier(),
+);
 
 class AutoDownloadNotifier extends StateNotifier<bool> {
   AutoDownloadNotifier() : super(true) {
@@ -68,7 +70,9 @@ class AutoDownloadNotifier extends StateNotifier<bool> {
 
 // Max Concurrent Downloads Provider
 final maxConcurrentDownloadsProvider =
-    StateNotifierProvider<MaxConcurrentNotifier, int>(MaxConcurrentNotifier.new);
+    StateNotifierProvider<MaxConcurrentNotifier, int>(
+      MaxConcurrentNotifier.new,
+    );
 
 class MaxConcurrentNotifier extends StateNotifier<int> {
   MaxConcurrentNotifier(this.ref) : super(2) {
@@ -90,9 +94,9 @@ class MaxConcurrentNotifier extends StateNotifier<int> {
 }
 
 // --- NEW: Preload Count Provider ---
-final preloadCountProvider = StateNotifierProvider<PreloadCountNotifier, int>((
-  ref,
-) => PreloadCountNotifier());
+final preloadCountProvider = StateNotifierProvider<PreloadCountNotifier, int>(
+  (ref) => PreloadCountNotifier(),
+);
 
 class PreloadCountNotifier extends StateNotifier<int> {
   PreloadCountNotifier() : super(1) {
@@ -168,23 +172,33 @@ final audioHandlerProvider = Provider<MyAudioHandler>((ref) {
   throw UnimplementedError('Initialize in main.dart');
 });
 
-final playbackStateProvider = StreamProvider<PlaybackState>((ref) => ref.watch(audioHandlerProvider).playbackState);
+final playbackStateProvider = StreamProvider<PlaybackState>(
+  (ref) => ref.watch(audioHandlerProvider).playbackState,
+);
 
-final currentMediaItemProvider = StreamProvider<MediaItem?>((ref) => ref.watch(audioHandlerProvider).mediaItem);
+final currentMediaItemProvider = StreamProvider<MediaItem?>(
+  (ref) => ref.watch(audioHandlerProvider).mediaItem,
+);
 
-final queueProvider = StreamProvider<List<MediaItem>>((ref) => ref.watch(audioHandlerProvider).queue);
+final queueProvider = StreamProvider<List<MediaItem>>(
+  (ref) => ref.watch(audioHandlerProvider).queue,
+);
 
-final shuffleModeProvider = StreamProvider<AudioServiceShuffleMode>((ref) => ref
+final shuffleModeProvider = StreamProvider<AudioServiceShuffleMode>(
+  (ref) => ref
       .watch(audioHandlerProvider)
       .playbackState
       .map((state) => state.shuffleMode)
-      .distinct());
+      .distinct(),
+);
 
-final repeatModeProvider = StreamProvider<AudioServiceRepeatMode>((ref) => ref
+final repeatModeProvider = StreamProvider<AudioServiceRepeatMode>(
+  (ref) => ref
       .watch(audioHandlerProvider)
       .playbackState
       .map((state) => state.repeatMode)
-      .distinct());
+      .distinct(),
+);
 
 // --- DATA FETCHING ---
 final tabsProvider = FutureProvider<List<SheetTab>>((ref) async {
@@ -204,10 +218,11 @@ final tracksProvider = FutureProvider<List<Track>>((ref) async {
 
 // --- PLAYLISTS PROVIDER ---
 final playlistsProvider =
-    StateNotifierProvider<PlaylistsNotifier, List<Playlist>>((ref) => PlaylistsNotifier());
+    StateNotifierProvider<PlaylistsNotifier, List<Playlist>>(
+      (ref) => PlaylistsNotifier(),
+    );
 
 class PlaylistsNotifier extends StateNotifier<List<Playlist>> {
-
   PlaylistsNotifier() : super([]) {
     _init();
   }

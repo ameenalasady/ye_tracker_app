@@ -2,7 +2,6 @@ import 'package:hive/hive.dart';
 
 @HiveType(typeId: 0)
 class SheetTab extends HiveObject {
-
   SheetTab({required this.name, required this.gid});
   @HiveField(0)
   final String name;
@@ -25,7 +24,8 @@ class SheetTabAdapter extends TypeAdapter<SheetTab> {
   @override
   final int typeId = 0;
   @override
-  SheetTab read(BinaryReader reader) => SheetTab(name: reader.read(), gid: reader.read());
+  SheetTab read(BinaryReader reader) =>
+      SheetTab(name: reader.read(), gid: reader.read());
 
   @override
   void write(BinaryWriter writer, SheetTab obj) {

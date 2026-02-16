@@ -71,20 +71,20 @@ class YeTrackerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-      title: 'Ye Tracker',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF121212),
-        fontFamily: 'Inter',
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFFFF5252),
-          surface: Color(0xFF1E1E1E),
-          onSurface: Colors.white,
-        ),
-        iconTheme: const IconThemeData(color: Colors.white70),
+    title: 'Ye Tracker',
+    debugShowCheckedModeBanner: false,
+    theme: ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      scaffoldBackgroundColor: const Color(0xFF121212),
+      fontFamily: 'Inter',
+      colorScheme: const ColorScheme.dark(
+        primary: Color(0xFFFF5252),
+        surface: Color(0xFF1E1E1E),
+        onSurface: Colors.white,
       ),
-      home: const MainScreen(),
-    );
+      iconTheme: const IconThemeData(color: Colors.white70),
+    ),
+    home: const MainScreen(),
+  );
 }

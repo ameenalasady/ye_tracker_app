@@ -17,7 +17,6 @@ enum DownloadStatus {
 }
 
 class DownloadTask {
-
   DownloadTask({
     required this.track,
     this.status = DownloadStatus.queued,

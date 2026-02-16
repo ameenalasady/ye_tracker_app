@@ -4,9 +4,11 @@ import '../../providers/app_providers.dart';
 import '../screens/downloads_screen.dart';
 
 class MainHeader extends ConsumerStatefulWidget {
-
   const MainHeader({
-    required this.onPlaylistsTap, required this.onFilterTap, required this.onSettingsTap, super.key,
+    required this.onPlaylistsTap,
+    required this.onFilterTap,
+    required this.onSettingsTap,
+    super.key,
   });
   final VoidCallback onPlaylistsTap;
   final VoidCallback onFilterTap;

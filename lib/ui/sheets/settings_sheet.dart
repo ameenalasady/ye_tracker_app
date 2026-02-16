@@ -84,9 +84,9 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Update check failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Update check failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _isCheckingUpdate = false);
@@ -211,8 +211,8 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                         ),
                         onPressed: preloadCount > 0
                             ? () => ref
-                                .read(preloadCountProvider.notifier)
-                                .set(preloadCount - 1)
+                                  .read(preloadCountProvider.notifier)
+                                  .set(preloadCount - 1)
                             : null,
                       ),
                       SizedBox(
@@ -233,8 +233,8 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                         ),
                         onPressed: preloadCount < 10
                             ? () => ref
-                                .read(preloadCountProvider.notifier)
-                                .set(preloadCount + 1)
+                                  .read(preloadCountProvider.notifier)
+                                  .set(preloadCount + 1)
                             : null,
                       ),
                     ],
@@ -260,8 +260,8 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                         ),
                         onPressed: maxConcurrent > 1
                             ? () => ref
-                                .read(maxConcurrentDownloadsProvider.notifier)
-                                .set(maxConcurrent - 1)
+                                  .read(maxConcurrentDownloadsProvider.notifier)
+                                  .set(maxConcurrent - 1)
                             : null,
                       ),
                       SizedBox(
@@ -282,8 +282,8 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                         ),
                         onPressed: maxConcurrent < 5
                             ? () => ref
-                                .read(maxConcurrentDownloadsProvider.notifier)
-                                .set(maxConcurrent + 1)
+                                  .read(maxConcurrentDownloadsProvider.notifier)
+                                  .set(maxConcurrent + 1)
                             : null,
                       ),
                     ],
@@ -415,8 +415,10 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
             child: Column(
               children: [
                 ListTile(
-                  leading:
-                      const Icon(Icons.system_update_rounded, color: Colors.white),
+                  leading: const Icon(
+                    Icons.system_update_rounded,
+                    color: Colors.white,
+                  ),
                   title: const Text(
                     'Check for Updates',
                     style: TextStyle(color: Colors.white),
@@ -426,10 +428,14 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                       'Current Version: ${info.version}',
                       style: const TextStyle(color: Colors.grey, fontSize: 12),
                     ),
-                    loading: () => const Text('Loading version...',
-                        style: TextStyle(color: Colors.grey, fontSize: 12)),
-                    error: (_, __) => const Text('Version unknown',
-                        style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    loading: () => const Text(
+                      'Loading version...',
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                    error: (_, __) => const Text(
+                      'Version unknown',
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
                   ),
                   trailing: _isCheckingUpdate
                       ? const SizedBox(

@@ -2,7 +2,6 @@ import 'package:hive/hive.dart';
 
 @HiveType(typeId: 1)
 class Track extends HiveObject {
-
   Track({
     required this.era,
     required this.artist,
@@ -48,18 +47,18 @@ class Track extends HiveObject {
   };
 
   Track copyWith({String? localPath}) => Track(
-      era: era,
-      artist: artist,
-      title: title,
-      notes: notes,
-      length: length,
-      releaseDate: releaseDate,
-      type: type,
-      isStreaming: isStreaming,
-      link: link,
-      localPath: localPath ?? this.localPath,
-      albumArtUrl: albumArtUrl,
-    );
+    era: era,
+    artist: artist,
+    title: title,
+    notes: notes,
+    length: length,
+    releaseDate: releaseDate,
+    type: type,
+    isStreaming: isStreaming,
+    link: link,
+    localPath: localPath ?? this.localPath,
+    albumArtUrl: albumArtUrl,
+  );
 
   String get displayName => artist.isNotEmpty ? '$artist - $title' : title;
 
@@ -122,7 +121,8 @@ class Track extends HiveObject {
   }
 
   @override
-  int get hashCode => title.hashCode ^ artist.hashCode ^ era.hashCode ^ link.hashCode;
+  int get hashCode =>
+      title.hashCode ^ artist.hashCode ^ era.hashCode ^ link.hashCode;
 }
 
 class TrackAdapter extends TypeAdapter<Track> {
@@ -131,18 +131,18 @@ class TrackAdapter extends TypeAdapter<Track> {
 
   @override
   Track read(BinaryReader reader) => Track(
-      era: reader.read(),
-      artist: reader.read(),
-      title: reader.read(),
-      notes: reader.read(),
-      length: reader.read(),
-      releaseDate: reader.read(),
-      type: reader.read(),
-      isStreaming: reader.read(),
-      link: reader.read(),
-      localPath: reader.read(),
-      albumArtUrl: reader.read(),
-    );
+    era: reader.read(),
+    artist: reader.read(),
+    title: reader.read(),
+    notes: reader.read(),
+    length: reader.read(),
+    releaseDate: reader.read(),
+    type: reader.read(),
+    isStreaming: reader.read(),
+    link: reader.read(),
+    localPath: reader.read(),
+    albumArtUrl: reader.read(),
+  );
 
   @override
   void write(BinaryWriter writer, Track obj) {
