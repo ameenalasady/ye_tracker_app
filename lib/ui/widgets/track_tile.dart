@@ -43,14 +43,34 @@ class _TrackTileState extends ConsumerState<TrackTile>
       track,
       onError: (msg) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(msg)));
+          _showToast(context, msg, isError: true);
         }
       },
       onSuccess: () {
         // Optional: Show success msg
       },
+    );
+  }
+
+  void _showToast(BuildContext context, String msg, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline_rounded : Icons.info_outline,
+              color: isError ? const Color(0xFFFF5252) : Colors.white,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                msg,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -101,8 +121,25 @@ class _TrackTileState extends ConsumerState<TrackTile>
                           .read(playlistsProvider.notifier)
                           .addTrackToPlaylist(playlist, track);
                       Navigator.pop(context);
+
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Added to ${playlist.name}')),
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              const Icon(
+                                Icons.playlist_add_check_rounded,
+                                color: Color(0xFFFF5252),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Added to ${playlist.name}',
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       );
                     },
                   ),
@@ -226,24 +263,17 @@ class _TrackTileState extends ConsumerState<TrackTile>
           final online = await _hasInternet();
           if (!online) {
             if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'No Internet Connection. Download tracks to play offline.',
-                  ),
-                ),
+              _showToast(
+                context,
+                'No Internet. Download tracks to play offline.',
+                isError: true,
               );
             }
           } else {
             _playTrack(t, isCurrentTrack, isPlaying);
           }
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No valid link found.'),
-              duration: Duration(milliseconds: 500),
-            ),
-          );
+          _showToast(context, 'No valid link found.', isError: true);
         }
       },
       child: AnimatedContainer(

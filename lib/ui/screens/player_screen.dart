@@ -81,8 +81,25 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                           .read(playlistsProvider.notifier)
                           .addTrackToPlaylist(playlist, track);
                       Navigator.pop(context);
+                      // STYLED SNACKBAR
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Added to ${playlist.name}')),
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              const Icon(
+                                Icons.playlist_add_check_rounded,
+                                color: Color(0xFFFF5252),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Added to ${playlist.name}',
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       );
                     },
                   ),

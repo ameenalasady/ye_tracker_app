@@ -43,15 +43,21 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
       }
       ref.invalidate(cacheSizeProvider);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Library refreshed successfully')),
+        _showToast(
+          context,
+          'Library refreshed successfully',
+          icon: Icons.check_circle_rounded,
+          iconColor: Colors.greenAccent,
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
+        _showToast(
           context,
-        ).showSnackBar(SnackBar(content: Text('Refresh failed: $e')));
+          'Refresh failed: $e',
+          icon: Icons.error_outline_rounded,
+          iconColor: const Color(0xFFFF5252),
+        );
       }
     } finally {
       if (mounted) setState(() => _isRefreshing = false);
@@ -74,23 +80,52 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
             builder: (ctx) => UpdateAvailableDialog(release: release),
           );
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('You are on the latest version.'),
-              duration: Duration(seconds: 2),
-            ),
+          _showToast(
+            context,
+            'You are on the latest version.',
+            icon: Icons.verified_rounded,
+            iconColor: Colors.blueAccent,
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
+        _showToast(
           context,
-        ).showSnackBar(SnackBar(content: Text('Update check failed: $e')));
+          'Update check failed: $e',
+          icon: Icons.wifi_off_rounded,
+          iconColor: const Color(0xFFFF5252),
+        );
       }
     } finally {
       if (mounted) setState(() => _isCheckingUpdate = false);
     }
+  }
+
+  void _showToast(
+    BuildContext context,
+    String message, {
+    IconData? icon,
+    Color? iconColor,
+  }) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            if (icon != null) ...[
+              Icon(icon, color: iconColor ?? Colors.white, size: 20),
+              const SizedBox(width: 12),
+            ],
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -337,8 +372,10 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                       ref.invalidate(cacheSizeProvider);
                       ref.invalidate(tracksProvider);
                       if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Cache cleared')),
+                        _showToast(
+                          context,
+                          'Cache cleared',
+                          icon: Icons.delete_sweep_rounded,
                         );
                       }
                     }

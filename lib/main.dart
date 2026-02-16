@@ -84,6 +84,19 @@ class YeTrackerApp extends StatelessWidget {
         onSurface: Colors.white,
       ),
       iconTheme: const IconThemeData(color: Colors.white70),
+      snackBarTheme: const SnackBarThemeData(
+        backgroundColor: Color(0xFF2A2A2A),
+        contentTextStyle: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w500,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+        ),
+        behavior: SnackBarBehavior.floating,
+        insetPadding: EdgeInsets.all(16),
+        elevation: 6,
+      ),
     ),
     home: const MainScreen(),
   );
