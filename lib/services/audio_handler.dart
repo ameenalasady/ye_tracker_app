@@ -172,6 +172,11 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     final track = _trackCache[item.id];
 
     if (track != null) {
+      // FIX: Optimization - Check if already downloading before calling manager.
+      // Although the manager handles deduping, checking here saves a function call
+      // and reduces log noise if _schedulePreload fires rapidly.
+      if (downloadManager.isDownloading(track.effectiveUrl)) return;
+
       downloadManager.downloadTrack(track);
     }
   }

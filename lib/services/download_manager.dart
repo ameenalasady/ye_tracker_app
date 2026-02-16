@@ -102,34 +102,35 @@ class DownloadManager extends ChangeNotifier {
       return;
     }
 
-    // 4. Connectivity Check (NEW)
+    // --- FIX START ---
+    // 4. Create Task and Add to List IMMEDIATELY (Synchronous Lock)
+    // We add it now so that subsequent calls to isDownloading() return true immediately.
+    final task = DownloadTask(track: track);
+    _tasks.add(task);
+    notifyListeners();
+
+    // 5. Connectivity Check (Async)
     // Only check for internet if we actually need to download the file.
     final isOnline = await _hasInternetConnection();
     if (!isOnline) {
+      // If checks fail, we must unlock the queue by removing the task
+      _tasks.remove(task);
+      notifyListeners();
       onError?.call('No Internet Connection');
       return;
     }
 
-    // 5. Create Task and Add to List IMMEDIATELY
-    // FIX: We add the task *before* awaiting permissions.
-    // This acts as a synchronous lock. Any subsequent calls for this URL
-    // will now fail the `isDownloading` check at step 2.
-    final task = DownloadTask(track: track);
-    _tasks.add(task);
-    notifyListeners(); // Update UI immediately
-
-    // 6. Permissions
+    // 6. Permissions (Async)
     if (Platform.isAndroid) {
-      // This await caused the race condition previously
       final status = await Permission.storage.request();
       if (status.isPermanentlyDenied) {
-        // If permission fails, we must unlock the queue by removing the task
         _tasks.remove(task);
         notifyListeners();
         onError?.call('Storage permission denied');
         return;
       }
     }
+    // --- FIX END ---
 
     // 7. Process Queue
     _processQueue();
