@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/app_providers.dart';
+import '../screens/main_screen.dart'; // Import to access UpdateAvailableDialog
 
 class SettingsSheet extends ConsumerStatefulWidget {
   const SettingsSheet({super.key});
@@ -12,6 +13,7 @@ class SettingsSheet extends ConsumerStatefulWidget {
 class _SettingsSheetState extends ConsumerState<SettingsSheet> {
   late TextEditingController _sourceController;
   bool _isRefreshing = false;
+  bool _isCheckingUpdate = false;
 
   @override
   void initState() {
@@ -56,13 +58,47 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
     }
   }
 
+  Future<void> _checkForUpdates() async {
+    setState(() => _isCheckingUpdate = true);
+    try {
+      final updateManager = ref.read(updateManagerProvider);
+      final release = await updateManager.checkForUpdates();
+
+      if (mounted) {
+        if (release != null) {
+          // Close sheet so the dialog is on top of the main screen
+          Navigator.pop(context);
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => UpdateAvailableDialog(release: release),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('You are on the latest version.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Update check failed: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isCheckingUpdate = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final autoDownload = ref.watch(autoDownloadProvider);
     final cacheSizeAsync = ref.watch(cacheSizeProvider);
     final maxConcurrent = ref.watch(maxConcurrentDownloadsProvider);
     final preloadCount = ref.watch(preloadCountProvider);
-    // Watch package info to get version from GitHub Actions build
     final packageInfoAsync = ref.watch(packageInfoProvider);
 
     return Padding(
@@ -155,7 +191,6 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                     ref.read(autoDownloadProvider.notifier).set(val);
                   },
                 ),
-                // --- NEW: Preload Count Setting ---
                 Divider(height: 1, color: Colors.white.withValues(alpha: 0.05)),
                 ListTile(
                   title: const Text(
@@ -176,8 +211,8 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                         ),
                         onPressed: preloadCount > 0
                             ? () => ref
-                                  .read(preloadCountProvider.notifier)
-                                  .set(preloadCount - 1)
+                                .read(preloadCountProvider.notifier)
+                                .set(preloadCount - 1)
                             : null,
                       ),
                       SizedBox(
@@ -198,14 +233,13 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                         ),
                         onPressed: preloadCount < 10
                             ? () => ref
-                                  .read(preloadCountProvider.notifier)
-                                  .set(preloadCount + 1)
+                                .read(preloadCountProvider.notifier)
+                                .set(preloadCount + 1)
                             : null,
                       ),
                     ],
                   ),
                 ),
-                // ----------------------------------
                 Divider(height: 1, color: Colors.white.withValues(alpha: 0.05)),
                 ListTile(
                   title: const Text(
@@ -226,8 +260,8 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                         ),
                         onPressed: maxConcurrent > 1
                             ? () => ref
-                                  .read(maxConcurrentDownloadsProvider.notifier)
-                                  .set(maxConcurrent - 1)
+                                .read(maxConcurrentDownloadsProvider.notifier)
+                                .set(maxConcurrent - 1)
                             : null,
                       ),
                       SizedBox(
@@ -248,8 +282,8 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                         ),
                         onPressed: maxConcurrent < 5
                             ? () => ref
-                                  .read(maxConcurrentDownloadsProvider.notifier)
-                                  .set(maxConcurrent + 1)
+                                .read(maxConcurrentDownloadsProvider.notifier)
+                                .set(maxConcurrent + 1)
                             : null,
                       ),
                     ],
@@ -360,15 +394,67 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          Center(
+
+          const SizedBox(height: 24),
+
+          // --- ABOUT / UPDATES ---
+          const Text(
+            'About',
+            style: TextStyle(
+              color: Color(0xFFFF5252),
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF2A2A2A),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              children: [
+                ListTile(
+                  leading:
+                      const Icon(Icons.system_update_rounded, color: Colors.white),
+                  title: const Text(
+                    'Check for Updates',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  subtitle: packageInfoAsync.when(
+                    data: (info) => Text(
+                      'Current Version: ${info.version}',
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                    loading: () => const Text('Loading version...',
+                        style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    error: (_, __) => const Text('Version unknown',
+                        style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  ),
+                  trailing: _isCheckingUpdate
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFFFF5252),
+                          ),
+                        )
+                      : const Icon(
+                          Icons.chevron_right_rounded,
+                          color: Colors.white54,
+                        ),
+                  onTap: _isCheckingUpdate ? null : _checkForUpdates,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+          const Center(
             child: Text(
-              packageInfoAsync.when(
-                data: (info) => '${info.version} • Ye Tracker',
-                loading: () => 'Loading... • Ye Tracker',
-                error: (_, __) => 'Ye Tracker',
-              ),
-              style: const TextStyle(color: Colors.white24, fontSize: 12),
+              'Ye Tracker',
+              style: TextStyle(color: Colors.white24, fontSize: 12),
             ),
           ),
         ],
