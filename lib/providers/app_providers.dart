@@ -13,9 +13,15 @@ import '../models/track.dart';
 import '../repositories/tracks_repository.dart';
 import '../services/audio_handler.dart';
 import '../services/download_manager.dart';
+import '../services/update_manager.dart';
 
 final sourceUrlProvider = StateProvider<String>((ref) => "yetracker.net");
 final searchQueryProvider = StateProvider<String>((ref) => "");
+
+// --- UPDATE MANAGER ---
+final updateManagerProvider = Provider<UpdateManager>((ref) {
+  return UpdateManager();
+});
 
 // --- NEW: Package Info Provider ---
 final packageInfoProvider = FutureProvider<PackageInfo>((ref) async {
