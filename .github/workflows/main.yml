@@ -1,4 +1,4 @@
-name: Auto Release v1..v2..
+name: Auto Release
 
 on:
   push:
@@ -13,7 +13,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Checkout with fetch-depth: 0 to ensure we have history for git log
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-java@v4
         with:
@@ -42,22 +45,48 @@ jobs:
         run: flutter pub get
 
       # BUILD STEP
-      # We inject the GitHub Run Number (e.g., 42) into the build
-      # Result: version 42 (v42) in Android settings
       - name: Build APK (v${{ github.run_number }})
         run: |
           flutter build apk --release \
             --build-name="v${{ github.run_number }}" \
             --build-number=${{ github.run_number }}
 
+      # CHANGELOG GENERATION STEP
+      # This finds the last tag. If it exists, it logs commits from there to now.
+      # If no tag exists, it logs all commits.
+      - name: Generate Release Notes
+        id: changelog
+        run: |
+          # Try to find the last tag reachable from HEAD
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          echo "Generating changelog..."
+
+          if [ -z "$LAST_TAG" ]; then
+            echo "No previous tags found. Listing all commits."
+            # Format: "- Commit message (ShortHash)"
+            git log --format="- %s (%h)" > release_notes.txt
+          else
+            echo "Last tag was $LAST_TAG. Listing commits since then."
+            git log --format="- %s (%h)" $LAST_TAG..HEAD > release_notes.txt
+          fi
+
+          # If the file is empty (e.g. forced rebuild), add a default message
+          if [ ! -s release_notes.txt ]; then
+            echo "- Maintenance release" > release_notes.txt
+          fi
+
+          # Output to console for debugging
+          cat release_notes.txt
+
       # RELEASE STEP
-      # This creates a GitHub Release named "v42" and attaches the APK
+      # Uses 'body_path' to read the file created in the previous step
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ github.run_number }}
           name: Release v${{ github.run_number }}
-          body: "Automatic build triggered by push to main."
+          body_path: release_notes.txt
           files: build/app/outputs/flutter-apk/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
