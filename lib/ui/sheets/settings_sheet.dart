@@ -62,6 +62,8 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
     final cacheSizeAsync = ref.watch(cacheSizeProvider);
     final maxConcurrent = ref.watch(maxConcurrentDownloadsProvider);
     final preloadCount = ref.watch(preloadCountProvider);
+    // Watch package info to get version from GitHub Actions build
+    final packageInfoAsync = ref.watch(packageInfoProvider);
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -359,10 +361,14 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
             ),
           ),
           const SizedBox(height: 12),
-          const Center(
+          Center(
             child: Text(
-              "v1.4.0 • Ye Tracker",
-              style: TextStyle(color: Colors.white24, fontSize: 12),
+              packageInfoAsync.when(
+                data: (info) => "${info.version} • Ye Tracker",
+                loading: () => "Loading... • Ye Tracker",
+                error: (_, __) => "Ye Tracker",
+              ),
+              style: const TextStyle(color: Colors.white24, fontSize: 12),
             ),
           ),
         ],

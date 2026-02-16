@@ -1,8 +1,10 @@
-import 'dart:io';
 import 'dart:async';
+import 'dart:io';
+
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:package_info_plus/package_info_plus.dart'; // Import added
 import 'package:path_provider/path_provider.dart';
 
 import '../models/playlist.dart';
@@ -14,6 +16,11 @@ import '../services/download_manager.dart';
 
 final sourceUrlProvider = StateProvider<String>((ref) => "yetracker.net");
 final searchQueryProvider = StateProvider<String>((ref) => "");
+
+// --- NEW: Package Info Provider ---
+final packageInfoProvider = FutureProvider<PackageInfo>((ref) async {
+  return await PackageInfo.fromPlatform();
+});
 
 // --- REPOSITORY PROVIDER ---
 final tracksRepositoryProvider = Provider<TracksRepository>((ref) {
