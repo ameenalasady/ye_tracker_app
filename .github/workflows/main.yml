@@ -4,7 +4,6 @@ on:
   push:
     branches: [ "master" ]
 
-# Essential: Gives the action permission to create Releases and Tags
 permissions:
   contents: write
 
@@ -13,22 +12,45 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout with fetch-depth: 0 to ensure we have history for git log
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # 1. Setup Java
       - uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
 
+      # 2. Setup Flutter (with SDK caching)
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
+          # architecture: x64 # Optional: specify if needed
 
-      # --- KEYSTORE SETUP START ---
+      # 3. OPTIMIZATION: Cache Pub Dependencies (Dart packages)
+      - name: Cache Pub dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ runner.tool_cache }}/flutter/:channel:-:version:-:arch:/packages
+            ${{ runner.tool_cache }}/flutter/:channel:-:version:-:arch:/.pub-cache
+            ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
+      # 4. OPTIMIZATION: Gradle Setup & Caching
+      # This specific action is maintained by Gradle and is much faster/smarter
+      # than manual caching. It saves the huge Android dependency downloads.
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-disabled: false
+          cache-read-only: false
+
+      # 5. Keystore Setup
       - name: Decode Keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
@@ -39,48 +61,36 @@ jobs:
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
           echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
           echo "storeFile=upload-keystore.jks" >> android/key.properties
-      # --- KEYSTORE SETUP END ---
 
+      # 6. Install Dependencies
       - name: Get Dependencies
         run: flutter pub get
 
-      # BUILD STEP
+      # 7. Build APK
       - name: Build APK (v${{ github.run_number }})
         run: |
           flutter build apk --release \
             --build-name="v${{ github.run_number }}" \
             --build-number=${{ github.run_number }}
 
-      # CHANGELOG GENERATION STEP
-      # This finds the last tag. If it exists, it logs commits from there to now.
-      # If no tag exists, it logs all commits.
+      # 8. Changelog Logic
       - name: Generate Release Notes
         id: changelog
         run: |
-          # Try to find the last tag reachable from HEAD
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-
           echo "Generating changelog..."
-
           if [ -z "$LAST_TAG" ]; then
             echo "No previous tags found. Listing all commits."
-            # Format: "- Commit message (ShortHash)"
             git log --format="- %s (%h)" > release_notes.txt
           else
             echo "Last tag was $LAST_TAG. Listing commits since then."
             git log --format="- %s (%h)" $LAST_TAG..HEAD > release_notes.txt
           fi
-
-          # If the file is empty (e.g. forced rebuild), add a default message
           if [ ! -s release_notes.txt ]; then
             echo "- Maintenance release" > release_notes.txt
           fi
 
-          # Output to console for debugging
-          cat release_notes.txt
-
-      # RELEASE STEP
-      # Uses 'body_path' to read the file created in the previous step
+      # 9. Release
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
