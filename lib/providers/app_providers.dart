@@ -15,18 +15,14 @@ import '../services/audio_handler.dart';
 import '../services/download_manager.dart';
 import '../services/update_manager.dart';
 
-final sourceUrlProvider = StateProvider<String>((ref) => "yetracker.net");
-final searchQueryProvider = StateProvider<String>((ref) => "");
+final sourceUrlProvider = StateProvider<String>((ref) => 'yetracker.net');
+final searchQueryProvider = StateProvider<String>((ref) => '');
 
 // --- UPDATE MANAGER ---
-final updateManagerProvider = Provider<UpdateManager>((ref) {
-  return UpdateManager();
-});
+final updateManagerProvider = Provider<UpdateManager>((ref) => UpdateManager());
 
 // --- NEW: Package Info Provider ---
-final packageInfoProvider = FutureProvider<PackageInfo>((ref) async {
-  return await PackageInfo.fromPlatform();
-});
+final packageInfoProvider = FutureProvider<PackageInfo>((ref) async => PackageInfo.fromPlatform());
 
 // --- REPOSITORY PROVIDER ---
 final tracksRepositoryProvider = Provider<TracksRepository>((ref) {
@@ -53,9 +49,7 @@ final selectedErasProvider = StateProvider<Set<String>>((ref) => {});
 // --- SETTINGS PROVIDERS ---
 final autoDownloadProvider = StateNotifierProvider<AutoDownloadNotifier, bool>((
   ref,
-) {
-  return AutoDownloadNotifier();
-});
+) => AutoDownloadNotifier());
 
 class AutoDownloadNotifier extends StateNotifier<bool> {
   AutoDownloadNotifier() : super(true) {
@@ -74,15 +68,13 @@ class AutoDownloadNotifier extends StateNotifier<bool> {
 
 // Max Concurrent Downloads Provider
 final maxConcurrentDownloadsProvider =
-    StateNotifierProvider<MaxConcurrentNotifier, int>((ref) {
-      return MaxConcurrentNotifier(ref);
-    });
+    StateNotifierProvider<MaxConcurrentNotifier, int>(MaxConcurrentNotifier.new);
 
 class MaxConcurrentNotifier extends StateNotifier<int> {
-  final Ref ref;
   MaxConcurrentNotifier(this.ref) : super(2) {
     _load();
   }
+  final Ref ref;
 
   void _load() {
     final box = Hive.box('settings');
@@ -100,9 +92,7 @@ class MaxConcurrentNotifier extends StateNotifier<int> {
 // --- NEW: Preload Count Provider ---
 final preloadCountProvider = StateNotifierProvider<PreloadCountNotifier, int>((
   ref,
-) {
-  return PreloadCountNotifier();
-});
+) => PreloadCountNotifier());
 
 class PreloadCountNotifier extends StateNotifier<int> {
   PreloadCountNotifier() : super(1) {
@@ -127,22 +117,22 @@ final cacheSizeProvider = FutureProvider<String>((ref) async {
   final dir = await getApplicationDocumentsDirectory();
   try {
     final files = dir.listSync().where((f) => f.path.endsWith('.mp3'));
-    int totalBytes = 0;
-    for (var f in files) {
+    var totalBytes = 0;
+    for (final f in files) {
       totalBytes += (f as File).lengthSync();
     }
     if (totalBytes < 1024 * 1024) {
-      return "${(totalBytes / 1024).toStringAsFixed(1)} KB";
+      return '${(totalBytes / 1024).toStringAsFixed(1)} KB';
     }
-    return "${(totalBytes / (1024 * 1024)).toStringAsFixed(1)} MB";
+    return '${(totalBytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   } catch (e) {
-    return "0 MB";
+    return '0 MB';
   }
 });
 
 // --- DOWNLOAD MANAGER ---
 final downloadManagerProvider = Provider<DownloadManager>((ref) {
-  throw UnimplementedError("Initialize in main.dart");
+  throw UnimplementedError('Initialize in main.dart');
 });
 
 // Provides the detailed list of tasks for the Downloads Screen
@@ -175,41 +165,31 @@ final activeDownloadsProvider = StreamProvider<Set<String>>((ref) {
 
 // --- AUDIO HANDLER ---
 final audioHandlerProvider = Provider<MyAudioHandler>((ref) {
-  throw UnimplementedError("Initialize in main.dart");
+  throw UnimplementedError('Initialize in main.dart');
 });
 
-final playbackStateProvider = StreamProvider<PlaybackState>((ref) {
-  return ref.watch(audioHandlerProvider).playbackState;
-});
+final playbackStateProvider = StreamProvider<PlaybackState>((ref) => ref.watch(audioHandlerProvider).playbackState);
 
-final currentMediaItemProvider = StreamProvider<MediaItem?>((ref) {
-  return ref.watch(audioHandlerProvider).mediaItem;
-});
+final currentMediaItemProvider = StreamProvider<MediaItem?>((ref) => ref.watch(audioHandlerProvider).mediaItem);
 
-final queueProvider = StreamProvider<List<MediaItem>>((ref) {
-  return ref.watch(audioHandlerProvider).queue;
-});
+final queueProvider = StreamProvider<List<MediaItem>>((ref) => ref.watch(audioHandlerProvider).queue);
 
-final shuffleModeProvider = StreamProvider<AudioServiceShuffleMode>((ref) {
-  return ref
+final shuffleModeProvider = StreamProvider<AudioServiceShuffleMode>((ref) => ref
       .watch(audioHandlerProvider)
       .playbackState
       .map((state) => state.shuffleMode)
-      .distinct();
-});
+      .distinct());
 
-final repeatModeProvider = StreamProvider<AudioServiceRepeatMode>((ref) {
-  return ref
+final repeatModeProvider = StreamProvider<AudioServiceRepeatMode>((ref) => ref
       .watch(audioHandlerProvider)
       .playbackState
       .map((state) => state.repeatMode)
-      .distinct();
-});
+      .distinct());
 
 // --- DATA FETCHING ---
 final tabsProvider = FutureProvider<List<SheetTab>>((ref) async {
   final repository = ref.watch(tracksRepositoryProvider);
-  return await repository.fetchTabs();
+  return repository.fetchTabs();
 });
 
 final selectedTabProvider = StateProvider<SheetTab?>((ref) => null);
@@ -219,21 +199,19 @@ final tracksProvider = FutureProvider<List<Track>>((ref) async {
   if (tab == null) return [];
 
   final repository = ref.watch(tracksRepositoryProvider);
-  return await repository.getTracksForTab(tab);
+  return repository.getTracksForTab(tab);
 });
 
 // --- PLAYLISTS PROVIDER ---
 final playlistsProvider =
-    StateNotifierProvider<PlaylistsNotifier, List<Playlist>>((ref) {
-      return PlaylistsNotifier();
-    });
+    StateNotifierProvider<PlaylistsNotifier, List<Playlist>>((ref) => PlaylistsNotifier());
 
 class PlaylistsNotifier extends StateNotifier<List<Playlist>> {
-  late Box<Playlist> _box;
 
   PlaylistsNotifier() : super([]) {
     _init();
   }
+  late Box<Playlist> _box;
 
   Future<void> _init() async {
     if (!Hive.isBoxOpen('playlists')) {
@@ -340,7 +318,7 @@ class CacheManager {
   static Future<void> clearAllCache() async {
     final dir = await getApplicationDocumentsDirectory();
     final files = dir.listSync();
-    for (var entity in files) {
+    for (final entity in files) {
       if (entity is File && entity.path.endsWith('.mp3')) {
         try {
           await entity.delete();

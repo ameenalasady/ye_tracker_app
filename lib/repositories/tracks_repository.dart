@@ -5,10 +5,10 @@ import '../models/track.dart';
 import '../services/tracker_parser.dart';
 
 class TracksRepository {
-  final TrackerParser _parser;
 
   TracksRepository({required String sourceUrl})
     : _parser = TrackerParser(sourceUrl);
+  final TrackerParser _parser;
 
   /// Fetches the list of tabs (Eras).
   /// Implemented Network-First, Cache-Fallback strategy.
@@ -53,13 +53,13 @@ class TracksRepository {
 
       // --- NEW: Harvest & Apply Era Images ---
       // 1. Harvest: If a track has an image, save it to the global era_images box
-      for (var track in tracks) {
+      for (final track in tracks) {
         if (track.albumArtUrl.isNotEmpty) {
           eraImagesBox.put(track.era, track.albumArtUrl);
         }
       }
 
-      for (var track in tracks) {
+      for (final track in tracks) {
         // --- Restore Download State ---
         final savedPath = downloadsBox.get(track.effectiveUrl);
         if (savedPath != null && savedPath is String) {
@@ -109,7 +109,7 @@ class TracksRepository {
       } catch (e) {
         // Handle corrupted box by deleting and recreating
         await Hive.deleteBoxFromDisk(boxName);
-        return await Hive.openBox<Track>(boxName);
+        return Hive.openBox<Track>(boxName);
       }
     }
   }

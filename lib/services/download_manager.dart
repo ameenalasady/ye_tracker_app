@@ -17,18 +17,18 @@ enum DownloadStatus {
 }
 
 class DownloadTask {
-  final Track track;
-  final String id; // track.effectiveUrl
-  DownloadStatus status;
-  double progress; // 0.0 to 1.0
-  String statusMessage;
 
   DownloadTask({
     required this.track,
     this.status = DownloadStatus.queued,
     this.progress = 0.0,
-    this.statusMessage = "Queued",
+    this.statusMessage = 'Queued',
   }) : id = track.effectiveUrl;
+  final Track track;
+  final String id; // track.effectiveUrl
+  DownloadStatus status;
+  double progress; // 0.0 to 1.0
+  String statusMessage;
 }
 
 class DownloadManager extends ChangeNotifier {
@@ -75,7 +75,7 @@ class DownloadManager extends ChangeNotifier {
   }) async {
     // 1. Validation
     if (track.effectiveUrl.isEmpty) {
-      onError?.call("Invalid URL");
+      onError?.call('Invalid URL');
       return;
     }
 
@@ -106,7 +106,7 @@ class DownloadManager extends ChangeNotifier {
     // Only check for internet if we actually need to download the file.
     final isOnline = await _hasInternetConnection();
     if (!isOnline) {
-      onError?.call("No Internet Connection");
+      onError?.call('No Internet Connection');
       return;
     }
 
@@ -126,7 +126,7 @@ class DownloadManager extends ChangeNotifier {
         // If permission fails, we must unlock the queue by removing the task
         _tasks.remove(task);
         notifyListeners();
-        onError?.call("Storage permission denied");
+        onError?.call('Storage permission denied');
         return;
       }
     }
@@ -172,7 +172,7 @@ class DownloadManager extends ChangeNotifier {
 
   Future<void> _startDownload(DownloadTask task) async {
     task.status = DownloadStatus.connecting;
-    task.statusMessage = "Connecting...";
+    task.statusMessage = 'Connecting...';
     notifyListeners();
 
     try {
@@ -190,10 +190,10 @@ class DownloadManager extends ChangeNotifier {
           task.status = DownloadStatus.downloading;
           if (total != -1) {
             task.progress = received / total;
-            task.statusMessage = "${(task.progress * 100).toStringAsFixed(0)}%";
+            task.statusMessage = '${(task.progress * 100).toStringAsFixed(0)}%';
           } else {
             // Indeterminate
-            task.statusMessage = "Downloading...";
+            task.statusMessage = 'Downloading...';
           }
           notifyListeners();
         },
@@ -209,14 +209,14 @@ class DownloadManager extends ChangeNotifier {
 
         task.status = DownloadStatus.completed;
         task.progress = 1.0;
-        task.statusMessage = "Done";
+        task.statusMessage = 'Done';
       } else {
-        throw Exception("File missing");
+        throw Exception('File missing');
       }
     } catch (e) {
       task.status = DownloadStatus.failed;
-      task.statusMessage = "Failed";
-      debugPrint("Download Error: $e");
+      task.statusMessage = 'Failed';
+      debugPrint('Download Error: $e');
     } finally {
       notifyListeners();
       _processQueue();

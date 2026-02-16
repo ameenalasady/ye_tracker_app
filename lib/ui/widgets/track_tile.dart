@@ -9,10 +9,10 @@ import '../../models/track.dart';
 import '../../providers/app_providers.dart';
 
 class TrackTile extends ConsumerStatefulWidget {
-  final Track track;
-  final VoidCallback? onTapOverride;
 
   const TrackTile({required this.track, this.onTapOverride, super.key});
+  final Track track;
+  final VoidCallback? onTapOverride;
 
   @override
   ConsumerState<TrackTile> createState() => _TrackTileState();
@@ -70,7 +70,7 @@ class _TrackTileState extends ConsumerState<TrackTile>
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                "Add to Playlist",
+                'Add to Playlist',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -80,9 +80,9 @@ class _TrackTileState extends ConsumerState<TrackTile>
               const SizedBox(height: 16),
               if (playlists.isEmpty)
                 const Padding(
-                  padding: EdgeInsets.all(16.0),
+                  padding: EdgeInsets.all(16),
                   child: Text(
-                    "No playlists created yet.",
+                    'No playlists created yet.',
                     style: TextStyle(color: Colors.white54),
                   ),
                 )
@@ -103,7 +103,7 @@ class _TrackTileState extends ConsumerState<TrackTile>
                           .addTrackToPlaylist(playlist, track);
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Added to ${playlist.name}")),
+                        SnackBar(content: Text('Added to ${playlist.name}')),
                       );
                     },
                   ),
@@ -130,12 +130,10 @@ class _TrackTileState extends ConsumerState<TrackTile>
     // 1. Listen to the Track object itself (standard Hive update)
     if (widget.track.isInBox) {
       return ValueListenableBuilder(
-        valueListenable: (widget.track.box as Box).listenable(
+        valueListenable: (widget.track.box! as Box).listenable(
           keys: [widget.track.key],
         ),
-        builder: (context, box, _) {
-          return _buildWithGlobalListener(context);
-        },
+        builder: (context, box, _) => _buildWithGlobalListener(context),
       );
     } else {
       return _buildWithGlobalListener(context);
@@ -159,7 +157,7 @@ class _TrackTileState extends ConsumerState<TrackTile>
 
   Widget _buildTileContent(BuildContext context, String? globalPath) {
     final t = widget.track;
-    final hasLink = t.link.isNotEmpty && t.link != "Link Needed";
+    final hasLink = t.link.isNotEmpty && t.link != 'Link Needed';
 
     // Check both local object state AND global registry state
     final isDownloaded =
@@ -173,7 +171,7 @@ class _TrackTileState extends ConsumerState<TrackTile>
     final isDownloading = activeDownloads.contains(t.effectiveUrl);
 
     final mediaItem = mediaItemAsync.value;
-    bool isCurrentTrack = false;
+    var isCurrentTrack = false;
 
     if (mediaItem != null) {
       final currentTrackObj = mediaItem.extras?['track_obj'] as Track?;
@@ -209,8 +207,8 @@ class _TrackTileState extends ConsumerState<TrackTile>
     }
     // ---------------------------------------------
 
-    final Color cardColor = const Color(0xFF252525);
-    final Color activeBorderColor = const Color(0xFFFF5252);
+    const cardColor = Color(0xFF252525);
+    const activeBorderColor = Color(0xFFFF5252);
 
     // Use effectiveAlbumArt
     final artUrl = t.effectiveAlbumArt;
@@ -226,13 +224,13 @@ class _TrackTileState extends ConsumerState<TrackTile>
           }
           _playTrack(t, isCurrentTrack, isPlaying);
         } else if (hasLink) {
-          bool online = await _hasInternet();
+          final online = await _hasInternet();
           if (!online) {
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text(
-                    "No Internet Connection. Download tracks to play offline.",
+                    'No Internet Connection. Download tracks to play offline.',
                   ),
                 ),
               );
@@ -243,7 +241,7 @@ class _TrackTileState extends ConsumerState<TrackTile>
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text("No valid link found."),
+              content: Text('No valid link found.'),
               duration: Duration(milliseconds: 500),
             ),
           );
@@ -364,7 +362,7 @@ class _TrackTileState extends ConsumerState<TrackTile>
                       t.artist,
                       if (t.era.isNotEmpty) t.era,
                       if (t.length.isNotEmpty) t.length,
-                    ].where((s) => s.isNotEmpty).join(" • "),
+                    ].where((s) => s.isNotEmpty).join(' • '),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 12, color: Colors.grey[500]),
@@ -418,8 +416,7 @@ class _TrackTileState extends ConsumerState<TrackTile>
     if (isCurrent && isPlaying) {
       return AnimatedBuilder(
         animation: _animController,
-        builder: (context, child) {
-          return SizedBox(
+        builder: (context, child) => SizedBox(
             height: 24,
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -433,8 +430,7 @@ class _TrackTileState extends ConsumerState<TrackTile>
                 _buildBar(2),
               ],
             ),
-          );
-        },
+          ),
       );
     }
     return Icon(
@@ -445,10 +441,10 @@ class _TrackTileState extends ConsumerState<TrackTile>
   }
 
   Widget _buildBar(int index) {
-    final double t = _animController.value;
-    final double offset = index * (pi / 2);
-    final double wave = 0.5 * (sin(t * 2 * pi + offset) + 1);
-    final double height = 6.0 + (wave * 12.0);
+    final t = _animController.value;
+    final offset = index * (pi / 2);
+    final wave = 0.5 * (sin(t * 2 * pi + offset) + 1);
+    final height = 6.0 + (wave * 12.0);
 
     return Container(
       width: 4,
@@ -465,13 +461,13 @@ class _TrackTileState extends ConsumerState<TrackTile>
     bool isDownloaded,
     bool isDownloading,
   ) {
-    const double boxSize = 40.0;
+    const boxSize = 40.0;
 
     if (isDownloading) {
-      return SizedBox(
+      return const SizedBox(
         width: boxSize,
         height: boxSize,
-        child: const Center(
+        child: Center(
           child: SizedBox(
             width: 20,
             height: 20,
@@ -485,10 +481,10 @@ class _TrackTileState extends ConsumerState<TrackTile>
     }
 
     if (isDownloaded) {
-      return SizedBox(
+      return const SizedBox(
         width: boxSize,
         height: boxSize,
-        child: const Center(
+        child: Center(
           child: Icon(
             Icons.check_circle_rounded,
             color: Color(0xFF4CAF50),

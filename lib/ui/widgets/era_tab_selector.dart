@@ -33,7 +33,7 @@ class EraTabSelector extends ConsumerWidget {
                 onTap: () {
                   ref.read(selectedTabProvider.notifier).state = tab;
                   // Reset filters when changing tabs
-                  ref.read(searchQueryProvider.notifier).state = "";
+                  ref.read(searchQueryProvider.notifier).state = '';
                   ref.read(selectedErasProvider.notifier).state = {};
                   ref.read(sortOptionProvider.notifier).state =
                       SortOption.defaultOrder;

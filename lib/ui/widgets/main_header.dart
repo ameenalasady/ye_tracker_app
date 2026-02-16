@@ -4,16 +4,13 @@ import '../../providers/app_providers.dart';
 import '../screens/downloads_screen.dart';
 
 class MainHeader extends ConsumerStatefulWidget {
+
+  const MainHeader({
+    required this.onPlaylistsTap, required this.onFilterTap, required this.onSettingsTap, super.key,
+  });
   final VoidCallback onPlaylistsTap;
   final VoidCallback onFilterTap;
   final VoidCallback onSettingsTap;
-
-  const MainHeader({
-    super.key,
-    required this.onPlaylistsTap,
-    required this.onFilterTap,
-    required this.onSettingsTap,
-  });
 
   @override
   ConsumerState<MainHeader> createState() => _MainHeaderState();
@@ -53,7 +50,7 @@ class _MainHeaderState extends ConsumerState<MainHeader> {
     });
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -61,7 +58,7 @@ class _MainHeaderState extends ConsumerState<MainHeader> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                "Ye Tracker",
+                'Ye Tracker',
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.w800,
@@ -160,7 +157,7 @@ class _MainHeaderState extends ConsumerState<MainHeader> {
               focusNode: _searchFocusNode,
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
-                hintText: "Search tracks...",
+                hintText: 'Search tracks...',
                 hintStyle: TextStyle(
                   color: Colors.white.withValues(alpha: 0.3),
                 ),
@@ -178,7 +175,7 @@ class _MainHeaderState extends ConsumerState<MainHeader> {
                         onPressed: () {
                           _searchController.clear();
                           _searchFocusNode.unfocus();
-                          ref.read(searchQueryProvider.notifier).state = "";
+                          ref.read(searchQueryProvider.notifier).state = '';
                         },
                       )
                     : null,

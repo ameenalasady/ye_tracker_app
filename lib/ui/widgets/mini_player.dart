@@ -19,7 +19,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
   // Animation state
   late AnimationController _animController;
   late Animation<double> _offsetAnimation;
-  double _dragOffset = 0.0;
+  double _dragOffset = 0;
 
   // Track logic state
   bool _isSwipingOut = false;
@@ -32,13 +32,14 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    _offsetAnimation = Tween<double>(begin: 0, end: 0).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
-    )..addListener(() {
-        setState(() {
-          _dragOffset = _offsetAnimation.value;
+    _offsetAnimation =
+        Tween<double>(begin: 0, end: 0).animate(
+          CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
+        )..addListener(() {
+          setState(() {
+            _dragOffset = _offsetAnimation.value;
+          });
         });
-      });
   }
 
   @override
@@ -84,13 +85,9 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
   }
 
   void _animateTo(double target, [VoidCallback? onComplete]) {
-    _offsetAnimation = Tween<double>(
-      begin: _dragOffset,
-      end: target,
-    ).animate(CurvedAnimation(
-      parent: _animController,
-      curve: Curves.easeOutCubic,
-    ));
+    _offsetAnimation = Tween<double>(begin: _dragOffset, end: target).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
+    );
 
     _animController.reset();
     _animController.forward().then((_) {
@@ -101,7 +98,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
   @override
   Widget build(BuildContext context) {
     // Explicitly type as MyAudioHandler to access custom methods
-    final MyAudioHandler audioHandler = ref.watch(audioHandlerProvider);
+    final audioHandler = ref.watch(audioHandlerProvider);
     final mediaItemAsync = ref.watch(currentMediaItemProvider);
     final playbackStateAsync = ref.watch(playbackStateProvider);
 
@@ -127,7 +124,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
           // Determine entry side based on where we left
           // If we swiped LEFT (-width), new song enters from RIGHT (width)
           // If we swiped RIGHT (width), new song enters from LEFT (-width)
-          double startPos = _dragOffset < 0 ? width : -width;
+          final startPos = _dragOffset < 0 ? width : -width;
 
           setState(() {
             _dragOffset = startPos;
@@ -143,9 +140,9 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
     if (mediaItem == null) return const SizedBox.shrink();
 
     // Calculate opacity for background icons based on drag
-    final double opacity = (_dragOffset.abs() / 100).clamp(0.0, 1.0);
-    final bool isSwipeNext = _dragOffset < 0; // Dragging left
-    final bool isSwipePrev = _dragOffset > 0; // Dragging right
+    final opacity = (_dragOffset.abs() / 100).clamp(0.0, 1.0);
+    final isSwipeNext = _dragOffset < 0; // Dragging left
+    final isSwipePrev = _dragOffset > 0; // Dragging right
 
     return GestureDetector(
       onHorizontalDragUpdate: _handleDragUpdate,
@@ -157,10 +154,14 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
             pageBuilder: (_, _, _) => const PlayerScreen(),
             transitionsBuilder: (_, animation, _, child) {
               const curve = Curves.easeOutQuart;
-              var tween = Tween(begin: const Offset(0.0, 1.0), end: Offset.zero)
-                  .chain(CurveTween(curve: curve));
+              final tween = Tween(
+                begin: const Offset(0, 1),
+                end: Offset.zero,
+              ).chain(CurveTween(curve: curve));
               return SlideTransition(
-                  position: animation.drive(tween), child: child);
+                position: animation.drive(tween),
+                child: child,
+              );
             },
             opaque: false,
           ),
@@ -172,9 +173,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
         decoration: BoxDecoration(
           color: const Color(0xFF2A2A2A).withValues(alpha: 0.95),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.1),
-          ),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.5),
@@ -194,7 +193,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                   children: [
                     // Previous Icon (Visible when dragging Right)
                     Padding(
-                      padding: const EdgeInsets.only(left: 24.0),
+                      padding: const EdgeInsets.only(left: 24),
                       child: Opacity(
                         opacity: isSwipePrev ? opacity : 0,
                         child: Transform.scale(
@@ -209,7 +208,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                     ),
                     // Next Icon (Visible when dragging Left)
                     Padding(
-                      padding: const EdgeInsets.only(right: 24.0),
+                      padding: const EdgeInsets.only(right: 24),
                       child: Opacity(
                         opacity: isSwipeNext ? opacity : 0,
                         child: Transform.scale(
@@ -230,7 +229,9 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
               Transform.translate(
                 offset: Offset(_dragOffset, 0),
                 child: Container(
-                  color: const Color(0xFF2A2A2A), // Matches background to hide icons
+                  color: const Color(
+                    0xFF2A2A2A,
+                  ), // Matches background to hide icons
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     children: [
@@ -286,7 +287,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                               ),
                             ),
                             Text(
-                              mediaItem.artist ?? "Unknown Artist",
+                              mediaItem.artist ?? 'Unknown Artist',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -314,8 +315,8 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                             isLoading
                                 ? Icons.more_horiz
                                 : (playing
-                                    ? Icons.pause_rounded
-                                    : Icons.play_arrow_rounded),
+                                      ? Icons.pause_rounded
+                                      : Icons.play_arrow_rounded),
                             color: Colors.black87,
                             size: 26,
                           ),
@@ -346,14 +347,16 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                   builder: (context, snapshot) {
                     final position = snapshot.data ?? Duration.zero;
                     final duration = mediaItem.duration ?? Duration.zero;
-                    double progress = 0.0;
+                    var progress = 0.0;
                     if (duration.inMilliseconds > 0) {
                       progress =
                           position.inMilliseconds / duration.inMilliseconds;
                       if (progress > 1.0) progress = 1.0;
                     }
                     // Hide bar if loading or if we are swiping actively
-                    if (isLoading || _isSwipingOut) return const SizedBox.shrink();
+                    if (isLoading || _isSwipingOut) {
+                      return const SizedBox.shrink();
+                    }
 
                     // Animate the bar sliding with the content
                     return Transform.translate(
@@ -362,7 +365,8 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                         alignment: Alignment.bottomLeft,
                         child: Container(
                           height: 3,
-                          width: (MediaQuery.of(context).size.width - 64) *
+                          width:
+                              (MediaQuery.of(context).size.width - 64) *
                               progress,
                           decoration: BoxDecoration(
                             color: const Color(0xFFFF5252),

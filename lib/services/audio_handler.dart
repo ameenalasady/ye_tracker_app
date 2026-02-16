@@ -7,6 +7,13 @@ import '../models/track.dart';
 import 'download_manager.dart'; // Import
 
 class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
+
+  // Constructor accepts DownloadManager
+  MyAudioHandler(this.downloadManager) {
+    _loadEmptyPlaylist();
+    _notifyAudioHandlerAboutPlaybackEvents();
+    _listenToPlaybackState();
+  }
   final _player = AudioPlayer();
   final DownloadManager downloadManager; // Dependency Injection
 
@@ -15,19 +22,12 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   ConcatenatingAudioSource? _playlist;
 
-  // Constructor accepts DownloadManager
-  MyAudioHandler(this.downloadManager) {
-    _loadEmptyPlaylist();
-    _notifyAudioHandlerAboutPlaybackEvents();
-    _listenToPlaybackState();
-  }
-
   Future<void> _loadEmptyPlaylist() async {
     try {
       _playlist = ConcatenatingAudioSource(children: []);
       await _player.setAudioSource(_playlist!);
     } catch (e) {
-      debugPrint("Error loading empty playlist: $e");
+      debugPrint('Error loading empty playlist: $e');
     }
   }
 
@@ -93,9 +93,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     // 2. Shuffle Mode Changes (Recalculate "next" songs)
     _player.shuffleModeEnabledStream.listen((enabled) {
       // Small delay to ensure just_audio updates effectiveIndices
-      Future.delayed(const Duration(milliseconds: 100), () {
-        _schedulePreload();
-      });
+      Future.delayed(const Duration(milliseconds: 100), _schedulePreload);
     });
 
     // 3. Duration & Queue Updates
@@ -109,9 +107,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     _player.sequenceStateStream.listen((sequenceState) {
       if (sequenceState == null) return;
       final sequence = sequenceState.effectiveSequence;
-      final newQueue = sequence.map((source) {
-        return source.tag as MediaItem;
-      }).toList();
+      final newQueue = sequence.map((source) => source.tag as MediaItem).toList();
       queue.add(newQueue);
 
       // Trigger preload when the sequence is fully loaded.
@@ -150,7 +146,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     }
 
     // 5. Preload/Download Next Songs
-    for (int i = 1; i <= preloadCount; i++) {
+    for (var i = 1; i <= preloadCount; i++) {
       // Check bounds
       if (currentEffectivePos + i >= indices.length) break;
 
@@ -301,16 +297,14 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   Future<void> playPlaylist(List<Track> tracks, int initialIndex) async {
     if (tracks.isEmpty) return;
-    final items = tracks.map((track) => _createMediaItem(track)).toList();
+    final items = tracks.map(_createMediaItem).toList();
 
     queue.add(items);
     if (initialIndex < items.length) {
       mediaItem.add(items[initialIndex]);
     }
 
-    final audioSources = items.map((item) {
-      return _createAudioSource(item);
-    }).toList();
+    final audioSources = items.map(_createAudioSource).toList();
 
     _playlist = ConcatenatingAudioSource(children: audioSources);
 
@@ -320,7 +314,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       _schedulePreload();
       play();
     } catch (e) {
-      debugPrint("Error playing playlist: $e");
+      debugPrint('Error playing playlist: $e');
     }
   }
 
@@ -337,10 +331,10 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       return AudioSource.uri(Uri.parse(item.id), tag: item);
     }
 
-    String uri = track.effectiveUrl;
+    var uri = track.effectiveUrl;
 
     // 1. Check Local Object
-    bool isLocal =
+    var isLocal =
         track.localPath.isNotEmpty && File(track.localPath).existsSync();
 
     // 2. Fallback: Check Global Registry
@@ -359,7 +353,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   }
 
   MediaItem _createMediaItem(Track track) {
-    String uri = track.effectiveUrl;
+    var uri = track.effectiveUrl;
 
     // 1. Check Local Object
     if (track.localPath.isNotEmpty && File(track.localPath).existsSync()) {
@@ -385,7 +379,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       id: uri,
       title: track.title,
       artist: track.artist.isEmpty
-          ? (track.era.isNotEmpty ? track.era : "Ye Tracker")
+          ? (track.era.isNotEmpty ? track.era : 'Ye Tracker')
           : track.artist,
       artUri: artUrl.isNotEmpty ? Uri.tryParse(artUrl) : null,
       extras: null,

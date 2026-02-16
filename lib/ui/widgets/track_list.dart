@@ -24,7 +24,7 @@ class TrackList extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  "No tracks found",
+                  'No tracks found',
                   style: TextStyle(
                     color: Colors.white.withAlpha((0.5 * 255).toInt()),
                     fontSize: 16,
@@ -52,8 +52,8 @@ class TrackList extends ConsumerWidget {
       ),
       error: (err, stack) => Center(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text("Error: $err", style: const TextStyle(color: Colors.red)),
+          padding: const EdgeInsets.all(16),
+          child: Text('Error: $err', style: const TextStyle(color: Colors.red)),
         ),
       ),
     );

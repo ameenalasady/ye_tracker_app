@@ -1,16 +1,10 @@
-import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:open_file/open_file.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
-class UpdateRelease {
-  final String tagName; // e.g., "v42"
-  final String body; // Release notes
-  final String downloadUrl; // APK url
-  final String htmlUrl; // GitHub release page
+class UpdateRelease { // GitHub release page
 
   UpdateRelease({
     required this.tagName,
@@ -18,6 +12,10 @@ class UpdateRelease {
     required this.downloadUrl,
     required this.htmlUrl,
   });
+  final String tagName; // e.g., "v42"
+  final String body; // Release notes
+  final String downloadUrl; // APK url
+  final String htmlUrl;
 
   // Extract integer version from "v42" -> 42
   int get versionNumber {
@@ -29,21 +27,22 @@ class UpdateRelease {
 class UpdateManager {
   final Dio _dio = Dio();
   // Update this to match your repository
-  final String _repoOwner = "ameenalasady";
-  final String _repoName = "ye_tracker_app";
+  final String _repoOwner = 'ameenalasady';
+  final String _repoName = 'ye_tracker_app';
 
   Future<UpdateRelease?> checkForUpdates() async {
     try {
-      final PackageInfo packageInfo = await PackageInfo.fromPlatform();
+      final packageInfo = await PackageInfo.fromPlatform();
       final currentBuildNumber = int.tryParse(packageInfo.buildNumber) ?? 0;
 
-      final url = "https://api.github.com/repos/$_repoOwner/$_repoName/releases/latest";
+      final url =
+          'https://api.github.com/repos/$_repoOwner/$_repoName/releases/latest';
       final response = await _dio.get(url);
 
       if (response.statusCode == 200) {
         final data = response.data;
         final tagName = data['tag_name'] as String; // e.g., "v45"
-        final body = data['body'] as String? ?? "No release notes.";
+        final body = data['body'] as String? ?? 'No release notes.';
         final htmlUrl = data['html_url'] as String;
         final assets = data['assets'] as List;
 
@@ -68,7 +67,7 @@ class UpdateManager {
         }
       }
     } catch (e) {
-      debugPrint("Update check failed: $e");
+      debugPrint('Update check failed: $e');
     }
     return null;
   }
@@ -80,7 +79,7 @@ class UpdateManager {
   }) async {
     try {
       final dir = await getApplicationDocumentsDirectory();
-      final savePath = "${dir.path}/update_${release.tagName}.apk";
+      final savePath = '${dir.path}/update_${release.tagName}.apk';
 
       await _dio.download(
         release.downloadUrl,
@@ -95,10 +94,10 @@ class UpdateManager {
       // Trigger installation
       final result = await OpenFile.open(savePath);
       if (result.type != ResultType.done) {
-        onError("Could not open APK: ${result.message}");
+        onError('Could not open APK: ${result.message}');
       }
     } catch (e) {
-      onError("Download failed: $e");
+      onError('Download failed: $e');
     }
   }
 }

@@ -42,14 +42,14 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
       ref.invalidate(cacheSizeProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Library refreshed successfully")),
+          const SnackBar(content: Text('Library refreshed successfully')),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text("Refresh failed: $e")));
+        ).showSnackBar(SnackBar(content: Text('Refresh failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _isRefreshing = false);
@@ -88,7 +88,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
           ),
           const SizedBox(height: 24),
           const Text(
-            "Settings",
+            'Settings',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -99,7 +99,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
 
           // --- LIBRARY & STORAGE ---
           const Text(
-            "Library & Storage",
+            'Library & Storage',
             style: TextStyle(
               color: Color(0xFFFF5252),
               fontWeight: FontWeight.bold,
@@ -117,11 +117,11 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                 ListTile(
                   leading: const Icon(Icons.sync_rounded, color: Colors.white),
                   title: const Text(
-                    "Refresh Library",
+                    'Refresh Library',
                     style: TextStyle(color: Colors.white),
                   ),
                   subtitle: const Text(
-                    "Pull latest changes from tracker",
+                    'Pull latest changes from tracker',
                     style: TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                   trailing: _isRefreshing
@@ -144,11 +144,11 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                   value: autoDownload,
                   activeThumbColor: const Color(0xFFFF5252),
                   title: const Text(
-                    "Auto-Download",
+                    'Auto-Download',
                     style: TextStyle(color: Colors.white),
                   ),
                   subtitle: const Text(
-                    "Automatically download songs when playing",
+                    'Automatically download songs when playing',
                     style: TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                   onChanged: (val) {
@@ -159,7 +159,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                 Divider(height: 1, color: Colors.white.withValues(alpha: 0.05)),
                 ListTile(
                   title: const Text(
-                    "Preload Next Songs",
+                    'Preload Next Songs',
                     style: TextStyle(color: Colors.white),
                   ),
                   subtitle: Text(
@@ -183,7 +183,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                       SizedBox(
                         width: 20,
                         child: Text(
-                          "$preloadCount",
+                          '$preloadCount',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: Colors.white,
@@ -209,11 +209,11 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                 Divider(height: 1, color: Colors.white.withValues(alpha: 0.05)),
                 ListTile(
                   title: const Text(
-                    "Concurrent Downloads",
+                    'Concurrent Downloads',
                     style: TextStyle(color: Colors.white),
                   ),
                   subtitle: Text(
-                    "Limit simultaneous downloads (Currently: $maxConcurrent)",
+                    'Limit simultaneous downloads (Currently: $maxConcurrent)',
                     style: const TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                   trailing: Row(
@@ -233,7 +233,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                       SizedBox(
                         width: 20,
                         child: Text(
-                          "$maxConcurrent",
+                          '$maxConcurrent',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: Colors.white,
@@ -258,7 +258,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                 Divider(height: 1, color: Colors.white.withValues(alpha: 0.05)),
                 ListTile(
                   title: const Text(
-                    "Clear Cache",
+                    'Clear Cache',
                     style: TextStyle(color: Colors.white),
                   ),
                   subtitle: Text(
@@ -275,22 +275,22 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                       builder: (c) => AlertDialog(
                         backgroundColor: const Color(0xFF252525),
                         title: const Text(
-                          "Clear Cache?",
+                          'Clear Cache?',
                           style: TextStyle(color: Colors.white),
                         ),
                         content: const Text(
-                          "This will delete all downloaded songs.",
+                          'This will delete all downloaded songs.',
                           style: TextStyle(color: Colors.white70),
                         ),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(c, false),
-                            child: const Text("Cancel"),
+                            child: const Text('Cancel'),
                           ),
                           TextButton(
                             onPressed: () => Navigator.pop(c, true),
                             child: const Text(
-                              "Delete",
+                              'Delete',
                               style: TextStyle(color: Color(0xFFFF5252)),
                             ),
                           ),
@@ -304,7 +304,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                       ref.invalidate(tracksProvider);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Cache cleared")),
+                          const SnackBar(content: Text('Cache cleared')),
                         );
                       }
                     }
@@ -318,7 +318,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
 
           // --- DATA SOURCE ---
           const Text(
-            "Data Source",
+            'Data Source',
             style: TextStyle(
               color: Color(0xFFFF5252),
               fontWeight: FontWeight.bold,
@@ -340,7 +340,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                     style: const TextStyle(color: Colors.white),
                     decoration: const InputDecoration(
                       border: InputBorder.none,
-                      labelText: "Tracker Domain",
+                      labelText: 'Tracker Domain',
                       labelStyle: TextStyle(color: Colors.grey),
                     ),
                   ),
@@ -353,7 +353,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                     Navigator.pop(context);
                   },
                   child: const Text(
-                    "Save",
+                    'Save',
                     style: TextStyle(color: Color(0xFFFF5252)),
                   ),
                 ),
@@ -364,9 +364,9 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
           Center(
             child: Text(
               packageInfoAsync.when(
-                data: (info) => "${info.version} • Ye Tracker",
-                loading: () => "Loading... • Ye Tracker",
-                error: (_, __) => "Ye Tracker",
+                data: (info) => '${info.version} • Ye Tracker',
+                loading: () => 'Loading... • Ye Tracker',
+                error: (_, __) => 'Ye Tracker',
               ),
               style: const TextStyle(color: Colors.white24, fontSize: 12),
             ),

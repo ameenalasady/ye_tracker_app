@@ -16,8 +16,7 @@ class FilterSheet extends ConsumerWidget {
       minChildSize: 0.4,
       maxChildSize: 0.85,
       expand: false,
-      builder: (_, scrollController) {
-        return Container(
+      builder: (_, scrollController) => Container(
           decoration: const BoxDecoration(
             color: Color(0xFF1E1E1E),
             borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
@@ -41,7 +40,7 @@ class FilterSheet extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    "Filter & Sort",
+                    'Filter & Sort',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -56,7 +55,7 @@ class FilterSheet extends ConsumerWidget {
                       Navigator.pop(context);
                     },
                     child: const Text(
-                      "Reset",
+                      'Reset',
                       style: TextStyle(color: Color(0xFFFF5252)),
                     ),
                   ),
@@ -64,7 +63,7 @@ class FilterSheet extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
               const Text(
-                "Sort By",
+                'Sort By',
                 style: TextStyle(
                   color: Color(0xFFFF5252),
                   fontWeight: FontWeight.bold,
@@ -80,21 +79,21 @@ class FilterSheet extends ConsumerWidget {
                     ref,
                     currentSort,
                     SortOption.defaultOrder,
-                    "Default",
+                    'Default',
                   ),
-                  _buildSortChip(ref, currentSort, SortOption.newest, "Newest"),
-                  _buildSortChip(ref, currentSort, SortOption.oldest, "Oldest"),
+                  _buildSortChip(ref, currentSort, SortOption.newest, 'Newest'),
+                  _buildSortChip(ref, currentSort, SortOption.oldest, 'Oldest'),
                   _buildSortChip(
                     ref,
                     currentSort,
                     SortOption.nameAz,
-                    "Name (A-Z)",
+                    'Name (A-Z)',
                   ),
                   _buildSortChip(
                     ref,
                     currentSort,
                     SortOption.shortest,
-                    "Shortest",
+                    'Shortest',
                   ),
                 ],
               ),
@@ -102,7 +101,7 @@ class FilterSheet extends ConsumerWidget {
               const Divider(color: Colors.white10),
               const SizedBox(height: 24),
               const Text(
-                "Filter Eras",
+                'Filter Eras',
                 style: TextStyle(
                   color: Color(0xFFFF5252),
                   fontWeight: FontWeight.bold,
@@ -110,17 +109,15 @@ class FilterSheet extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              availableEras.isEmpty
-                  ? const Text(
-                      "No eras found in this tab.",
+              if (availableEras.isEmpty) const Text(
+                      'No eras found in this tab.',
                       style: TextStyle(color: Colors.grey),
-                    )
-                  : Wrap(
+                    ) else Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       children: [
                         ChoiceChip(
-                          label: const Text("All Eras"),
+                          label: const Text('All Eras'),
                           selected: selectedEras.isEmpty,
                           onSelected: (selected) {
                             if (selected) {
@@ -174,8 +171,7 @@ class FilterSheet extends ConsumerWidget {
               const SizedBox(height: 40),
             ],
           ),
-        );
-      },
+        ),
     );
   }
 

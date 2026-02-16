@@ -1,14 +1,16 @@
 import 'dart:async';
 import 'dart:isolate';
+
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as html_parser;
+import 'package:http/http.dart' as http;
+
 import '../models/sheet_tab.dart';
 import '../models/track.dart';
 
 class TrackerParser {
-  final String sourceUrl;
   TrackerParser(this.sourceUrl);
+  final String sourceUrl;
 
   String get _baseUrl {
     var url = sourceUrl;
@@ -24,7 +26,7 @@ class TrackerParser {
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
-      throw Exception("Failed to load source: ${response.statusCode}");
+      throw Exception('Failed to load source: ${response.statusCode}');
     }
 
     final tabList = <SheetTab>[];
@@ -50,23 +52,23 @@ class TrackerParser {
       }
     }
     if (tabList.isEmpty) {
-      throw Exception("No tabs found. Check URL.");
+      throw Exception('No tabs found. Check URL.');
     }
     return tabList;
   }
 
   Future<List<Track>> fetchTracksForTab(String gid) async {
     final url = '$_baseUrl/htmlview/sheet?headers=true&gid=$gid';
-    debugPrint("Fetching: $url");
+    debugPrint('Fetching: $url');
 
     // PASS HEADERS HERE
     final response = await http
         .get(Uri.parse(url), headers: Track.imageHeaders)
         .timeout(const Duration(seconds: 20));
 
-    if (response.statusCode != 200) throw Exception("Failed to load Tab HTML");
+    if (response.statusCode != 200) throw Exception('Failed to load Tab HTML');
 
-    return await Isolate.run(() => _parseHtml(response.body));
+    return Isolate.run(() => _parseHtml(response.body));
   }
 }
 
@@ -79,23 +81,23 @@ List<Track> _parseHtml(String htmlBody) {
   if (rows.isEmpty) return [];
 
   // --- 1. Header Detection ---
-  Map<String, int> colMap = {};
-  int startRowIndex = 0;
+  final colMap = <String, int>{};
+  var startRowIndex = 0;
 
-  for (int i = 0; i < rows.length && i < 20; i++) {
+  for (var i = 0; i < rows.length && i < 20; i++) {
     final cells = rows[i].children;
     if (cells.isEmpty) continue;
 
     final texts = cells.map((e) => e.text.trim().toLowerCase()).toList();
 
-    bool hasName = texts.contains('name');
-    bool hasLength = texts.any(
+    final hasName = texts.contains('name');
+    final hasLength = texts.any(
       (t) => t.contains('length') || t.contains('duration'),
     );
 
     if (hasName && hasLength) {
       startRowIndex = i + 1;
-      for (int c = 0; c < texts.length; c++) {
+      for (var c = 0; c < texts.length; c++) {
         final h = texts[c];
         if (h.contains('era')) {
           colMap['era'] = c;
@@ -126,9 +128,9 @@ List<Track> _parseHtml(String htmlBody) {
     return [];
   }
 
-  final List<Track> tracks = [];
-  String lastEra = "";
-  String lastEraImage = "";
+  final tracks = <Track>[];
+  var lastEra = '';
+  var lastEraImage = '';
   final regExpGoogle = RegExp(r'[?&]q=([^&]+)');
 
   final idxName = colMap['name']!;
@@ -141,13 +143,13 @@ List<Track> _parseHtml(String htmlBody) {
   final idxStreaming = colMap['streaming'] ?? -1;
 
   // --- 3. Parsing Rows ---
-  for (int i = startRowIndex; i < rows.length; i++) {
+  for (var i = startRowIndex; i < rows.length; i++) {
     final cells = rows[i].children;
 
     // --- Image Detection (Era Headers) ---
     final imgs = rows[i].querySelectorAll('img');
     if (imgs.isNotEmpty) {
-      for (var img in imgs) {
+      for (final img in imgs) {
         final src = img.attributes['src'];
         if (src != null && src.isNotEmpty) {
           lastEraImage = src;
@@ -159,30 +161,30 @@ List<Track> _parseHtml(String htmlBody) {
       continue;
     }
 
-    String rawName = cells[idxName].text.trim();
-    if (rawName.isEmpty || rawName == "Name") {
+    final rawName = cells[idxName].text.trim();
+    if (rawName.isEmpty || rawName == 'Name') {
       continue;
     }
 
-    String len = (idxLength > -1 && idxLength < cells.length)
+    final len = (idxLength > -1 && idxLength < cells.length)
         ? cells[idxLength].text.trim()
-        : "";
+        : '';
 
     // CHANGED: Strictly skip if there is no duration/length
     if (len.isEmpty) continue;
 
-    String lnk = "";
+    var lnk = '';
     if (idxLink > -1 && idxLink < cells.length) {
       final cell = cells[idxLink];
       final anchor = cell.querySelector('a');
       if (anchor != null) {
-        lnk = anchor.attributes['href'] ?? "";
-      } else if (cell.text.contains("http")) {
+        lnk = anchor.attributes['href'] ?? '';
+      } else if (cell.text.contains('http')) {
         lnk = cell.text.trim();
       }
     }
 
-    String era = "";
+    var era = '';
     if (idxEra > -1 && idxEra < cells.length) {
       era = cells[idxEra].text.trim();
     }
@@ -193,21 +195,21 @@ List<Track> _parseHtml(String htmlBody) {
       era = lastEra;
     }
 
-    String artist = "Kanye West";
-    String title = rawName;
+    var artist = 'Kanye West';
+    var title = rawName;
 
-    if (rawName.contains(" - ")) {
-      final parts = rawName.split(" - ");
+    if (rawName.contains(' - ')) {
+      final parts = rawName.split(' - ');
       if (parts[0].length < 60) {
         artist = parts[0].trim();
-        title = parts.sublist(1).join(" - ").trim();
+        title = parts.sublist(1).join(' - ').trim();
       }
     } else {
-      String type = (idxType > -1 && idxType < cells.length)
+      final type = (idxType > -1 && idxType < cells.length)
           ? cells[idxType].text.trim().toLowerCase()
-          : "";
+          : '';
       if (type == 'production') {
-        artist = "";
+        artist = '';
       }
     }
 
@@ -221,7 +223,7 @@ List<Track> _parseHtml(String htmlBody) {
       }
     }
 
-    bool streaming = false;
+    var streaming = false;
     if (idxStreaming > -1 && idxStreaming < cells.length) {
       streaming = cells[idxStreaming].text.trim().toLowerCase() == 'yes';
     }
@@ -233,14 +235,14 @@ List<Track> _parseHtml(String htmlBody) {
         title: title,
         notes: (idxNotes > -1 && idxNotes < cells.length)
             ? cells[idxNotes].text.trim()
-            : "",
+            : '',
         length: len,
         releaseDate: (idxDate > -1 && idxDate < cells.length)
             ? cells[idxDate].text.trim()
-            : "",
+            : '',
         type: (idxType > -1 && idxType < cells.length)
             ? cells[idxType].text.trim()
-            : "",
+            : '',
         isStreaming: streaming,
         link: lnk,
         albumArtUrl: lastEraImage,

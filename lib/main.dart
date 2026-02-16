@@ -70,8 +70,7 @@ class YeTrackerApp extends StatelessWidget {
   const YeTrackerApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
+  Widget build(BuildContext context) => MaterialApp(
       title: 'Ye Tracker',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -88,5 +87,4 @@ class YeTrackerApp extends StatelessWidget {
       ),
       home: const MainScreen(),
     );
-  }
 }

@@ -17,7 +17,7 @@ class DownloadsScreen extends ConsumerWidget {
         elevation: 0,
         centerTitle: true,
         title: const Text(
-          "Downloads",
+          'Downloads',
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         leading: IconButton(
@@ -39,7 +39,7 @@ class DownloadsScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    "No active downloads",
+                    'No active downloads',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.5),
                       fontSize: 16,
@@ -62,7 +62,7 @@ class DownloadsScreen extends ConsumerWidget {
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(
-          child: Text("Error: $err", style: const TextStyle(color: Colors.red)),
+          child: Text('Error: $err', style: const TextStyle(color: Colors.red)),
         ),
       ),
     );
@@ -70,8 +70,8 @@ class DownloadsScreen extends ConsumerWidget {
 }
 
 class _DownloadItemTile extends StatelessWidget {
-  final DownloadTask task;
   const _DownloadItemTile({required this.task});
+  final DownloadTask task;
 
   @override
   Widget build(BuildContext context) {

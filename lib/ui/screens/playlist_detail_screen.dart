@@ -6,8 +6,8 @@ import '../widgets/mini_player.dart';
 import '../widgets/track_tile.dart';
 
 class PlaylistDetailScreen extends ConsumerWidget {
-  final Playlist playlist;
   const PlaylistDetailScreen({required this.playlist, super.key});
+  final Playlist playlist;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -39,20 +39,18 @@ class PlaylistDetailScreen extends ConsumerWidget {
       ),
       body: Stack(
         children: [
-          updatedPlaylist.tracks.isEmpty
-              ? const Center(
+          if (updatedPlaylist.tracks.isEmpty) const Center(
                   child: Text(
-                    "No tracks in this playlist.",
+                    'No tracks in this playlist.',
                     style: TextStyle(color: Colors.white54),
                   ),
-                )
-              : ListView.builder(
+                ) else ListView.builder(
                   padding: const EdgeInsets.only(bottom: 100),
                   itemCount: updatedPlaylist.tracks.length,
                   itemBuilder: (context, index) {
                     final track = updatedPlaylist.tracks[index];
                     return Dismissible(
-                      key: Key("${track.effectiveUrl}_$index"),
+                      key: Key('${track.effectiveUrl}_$index'),
                       direction: DismissDirection.endToStart,
                       background: Container(
                         alignment: Alignment.centerRight,

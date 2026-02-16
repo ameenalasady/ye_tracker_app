@@ -2,6 +2,20 @@ import 'package:hive/hive.dart';
 
 @HiveType(typeId: 1)
 class Track extends HiveObject {
+
+  Track({
+    required this.era,
+    required this.artist,
+    required this.title,
+    required this.notes,
+    required this.length,
+    required this.releaseDate,
+    required this.type,
+    required this.isStreaming,
+    required this.link,
+    this.localPath = '',
+    this.albumArtUrl = '',
+  });
   @HiveField(0)
   final String era;
   @HiveField(1)
@@ -33,22 +47,7 @@ class Track extends HiveObject {
     'Referer': 'https://docs.google.com/',
   };
 
-  Track({
-    required this.era,
-    required this.artist,
-    required this.title,
-    required this.notes,
-    required this.length,
-    required this.releaseDate,
-    required this.type,
-    required this.isStreaming,
-    required this.link,
-    this.localPath = '',
-    this.albumArtUrl = '',
-  });
-
-  Track copyWith({String? localPath}) {
-    return Track(
+  Track copyWith({String? localPath}) => Track(
       era: era,
       artist: artist,
       title: title,
@@ -61,12 +60,11 @@ class Track extends HiveObject {
       localPath: localPath ?? this.localPath,
       albumArtUrl: albumArtUrl,
     );
-  }
 
-  String get displayName => artist.isNotEmpty ? "$artist - $title" : title;
+  String get displayName => artist.isNotEmpty ? '$artist - $title' : title;
 
   String get searchIndex {
-    _searchIndex ??= "$title $artist $era $notes".toLowerCase();
+    _searchIndex ??= '$title $artist $era $notes'.toLowerCase();
     return _searchIndex!;
   }
 
@@ -124,9 +122,7 @@ class Track extends HiveObject {
   }
 
   @override
-  int get hashCode {
-    return title.hashCode ^ artist.hashCode ^ era.hashCode ^ link.hashCode;
-  }
+  int get hashCode => title.hashCode ^ artist.hashCode ^ era.hashCode ^ link.hashCode;
 }
 
 class TrackAdapter extends TypeAdapter<Track> {
@@ -134,8 +130,7 @@ class TrackAdapter extends TypeAdapter<Track> {
   final int typeId = 1;
 
   @override
-  Track read(BinaryReader reader) {
-    return Track(
+  Track read(BinaryReader reader) => Track(
       era: reader.read(),
       artist: reader.read(),
       title: reader.read(),
@@ -148,7 +143,6 @@ class TrackAdapter extends TypeAdapter<Track> {
       localPath: reader.read(),
       albumArtUrl: reader.read(),
     );
-  }
 
   @override
   void write(BinaryWriter writer, Track obj) {

@@ -16,10 +16,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   double? _dragValue;
 
   String _formatDuration(Duration? duration) {
-    if (duration == null) return "--:--";
-    String twoDigits(int n) => n.toString().padLeft(2, "0");
-    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
-    return "${duration.inMinutes}:$twoDigitSeconds";
+    if (duration == null) return '--:--';
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
+    return '${duration.inMinutes}:$twoDigitSeconds';
   }
 
   void _showQueueSheet(BuildContext context) {
@@ -49,7 +49,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                "Add to Playlist",
+                'Add to Playlist',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -59,9 +59,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               const SizedBox(height: 16),
               if (playlists.isEmpty)
                 const Padding(
-                  padding: EdgeInsets.all(16.0),
+                  padding: EdgeInsets.all(16),
                   child: Text(
-                    "No playlists created yet. Go to Library to create one.",
+                    'No playlists created yet. Go to Library to create one.',
                     style: TextStyle(color: Colors.white54),
                   ),
                 )
@@ -82,7 +82,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                           .addTrackToPlaylist(playlist, track);
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Added to ${playlist.name}")),
+                        SnackBar(content: Text('Added to ${playlist.name}')),
                       );
                     },
                   ),
@@ -110,7 +110,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     if (mediaItem == null) return const SizedBox.shrink();
 
-    final Track? currentTrack = mediaItem.extras?['track_obj'] as Track?;
+    final currentTrack = mediaItem.extras?['track_obj'] as Track?;
 
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
@@ -159,7 +159,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       onPressed: () => Navigator.pop(context),
                     ),
                     const Text(
-                      "Now Playing",
+                      'Now Playing',
                       style: TextStyle(
                         color: Colors.white70,
                         fontSize: 12,
@@ -246,7 +246,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      mediaItem.artist ?? "Unknown Artist",
+                      mediaItem.artist ?? 'Unknown Artist',
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -269,9 +269,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   final position = snapshot.data ?? Duration.zero;
                   final duration = mediaItem.duration ?? Duration.zero;
 
-                  double sliderValue =
-                      (_dragValue ?? position.inMilliseconds.toDouble());
-                  double max = duration.inMilliseconds.toDouble();
+                  var sliderValue =
+                      _dragValue ?? position.inMilliseconds.toDouble();
+                  var max = duration.inMilliseconds.toDouble();
 
                   if (max <= 0) max = 1.0;
                   if (sliderValue > max) sliderValue = max;
@@ -367,7 +367,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       Icons.skip_previous_rounded,
                       color: Colors.white,
                     ),
-                    onPressed: () => audioHandler.skipToPrevious(),
+                    onPressed: audioHandler.skipToPrevious,
                   ),
                   Container(
                     width: 72,
@@ -405,7 +405,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       Icons.skip_next_rounded,
                       color: Colors.white,
                     ),
-                    onPressed: () => audioHandler.skipToNext(),
+                    onPressed: audioHandler.skipToNext,
                   ),
                   // LOOP BUTTON
                   IconButton(
@@ -437,7 +437,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
               // --- QUEUE BUTTON ---
               Padding(
-                padding: const EdgeInsets.only(bottom: 20.0),
+                padding: const EdgeInsets.only(bottom: 20),
                 child: TextButton.icon(
                   onPressed: () => _showQueueSheet(context),
                   icon: const Icon(
@@ -445,7 +445,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                     color: Colors.white54,
                   ),
                   label: const Text(
-                    "Up Next",
+                    'Up Next',
                     style: TextStyle(color: Colors.white54),
                   ),
                 ),
@@ -481,8 +481,7 @@ class _QueueSheetState extends ConsumerState<QueueSheet> {
       minChildSize: 0.4,
       maxChildSize: 0.9,
       expand: false,
-      builder: (_, scrollController) {
-        return Container(
+      builder: (_, scrollController) => Container(
           decoration: const BoxDecoration(
             color: Color(0xFF1E1E1E),
             borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
@@ -502,7 +501,7 @@ class _QueueSheetState extends ConsumerState<QueueSheet> {
               ),
               const SizedBox(height: 16),
               const Text(
-                "Up Next",
+                'Up Next',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -516,14 +515,14 @@ class _QueueSheetState extends ConsumerState<QueueSheet> {
                     if (queue.isEmpty) {
                       return const Center(
                         child: Text(
-                          "Queue is empty",
+                          'Queue is empty',
                           style: TextStyle(color: Colors.white54),
                         ),
                       );
                     }
 
                     final currentId = currentItemAsync.value?.id;
-                    int currentIndex = -1;
+                    var currentIndex = -1;
 
                     // Find index of current song
                     if (currentId != null) {
@@ -537,16 +536,16 @@ class _QueueSheetState extends ConsumerState<QueueSheet> {
 
                     // --- WINDOWING LOGIC ---
                     // Load 10 before and 10 after
-                    final int startOffset = 10;
-                    final int endOffset =
+                    const startOffset = 10;
+                    const endOffset =
                         11; // +1 to include the item itself in the range calculation logic
 
                     // Calculate bounds safely
-                    final int startIndex = (currentIndex - startOffset).clamp(
+                    final startIndex = (currentIndex - startOffset).clamp(
                       0,
                       queue.length,
                     );
-                    final int endIndex = (currentIndex + endOffset).clamp(
+                    final endIndex = (currentIndex + endOffset).clamp(
                       0,
                       queue.length,
                     );
@@ -562,7 +561,7 @@ class _QueueSheetState extends ConsumerState<QueueSheet> {
                           final relativeIndex = currentIndex - startIndex;
                           if (relativeIndex > 0) {
                             // 72 is the height of the SizedBox/ListTile below
-                            final double offset = relativeIndex * 72.0;
+                            final offset = relativeIndex * 72.0;
                             scrollController.jumpTo(offset);
                           }
                           _initialScrollPerformed = true;
@@ -573,13 +572,11 @@ class _QueueSheetState extends ConsumerState<QueueSheet> {
                     return ReorderableListView.builder(
                       scrollController: scrollController,
                       itemCount: visibleQueue.length,
-                      proxyDecorator: (child, index, animation) {
-                        return Material(
+                      proxyDecorator: (child, index, animation) => Material(
                           color: const Color(0xFF2A2A2A),
                           elevation: 6,
                           child: child,
-                        );
-                      },
+                        ),
                       onReorder: (int oldIndex, int newIndex) {
                         // Map local subset indices back to global indices
                         final globalOldIndex = startIndex + oldIndex;
@@ -596,7 +593,7 @@ class _QueueSheetState extends ConsumerState<QueueSheet> {
                         final globalIndex = startIndex + index;
 
                         return Dismissible(
-                          key: Key("${item.id}_$globalIndex"),
+                          key: Key('${item.id}_$globalIndex'),
                           background: Container(
                             color: Colors.red,
                             alignment: Alignment.centerRight,
@@ -613,7 +610,7 @@ class _QueueSheetState extends ConsumerState<QueueSheet> {
                           child: SizedBox(
                             height: 72,
                             child: ListTile(
-                              key: ValueKey("${item.id}_$globalIndex"),
+                              key: ValueKey('${item.id}_$globalIndex'),
                               leading: Container(
                                 width: 40,
                                 height: 40,
@@ -646,7 +643,7 @@ class _QueueSheetState extends ConsumerState<QueueSheet> {
                                 ),
                               ),
                               subtitle: Text(
-                                item.artist ?? "",
+                                item.artist ?? '',
                                 maxLines: 1,
                                 style: const TextStyle(color: Colors.white54),
                               ),
@@ -673,8 +670,7 @@ class _QueueSheetState extends ConsumerState<QueueSheet> {
               ),
             ],
           ),
-        );
-      },
+        ),
     );
   }
 }

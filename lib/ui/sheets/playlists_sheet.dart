@@ -15,8 +15,7 @@ class PlaylistsSheet extends ConsumerWidget {
       minChildSize: 0.4,
       maxChildSize: 0.9,
       expand: false,
-      builder: (_, scrollController) {
-        return Container(
+      builder: (_, scrollController) => Container(
           decoration: const BoxDecoration(
             color: Color(0xFF1E1E1E),
             borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
@@ -36,12 +35,12 @@ class PlaylistsSheet extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      "Your Playlists",
+                      'Your Playlists',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -60,7 +59,7 @@ class PlaylistsSheet extends ConsumerWidget {
                 child: playlists.isEmpty
                     ? const Center(
                         child: Text(
-                          "No playlists yet.",
+                          'No playlists yet.',
                           style: TextStyle(color: Colors.white54),
                         ),
                       )
@@ -87,7 +86,7 @@ class PlaylistsSheet extends ConsumerWidget {
                               style: const TextStyle(color: Colors.white),
                             ),
                             subtitle: Text(
-                              "${playlist.tracks.length} tracks",
+                              '${playlist.tracks.length} tracks',
                               style: const TextStyle(color: Colors.white54),
                             ),
                             trailing: IconButton(
@@ -116,8 +115,7 @@ class PlaylistsSheet extends ConsumerWidget {
               ),
             ],
           ),
-        );
-      },
+        ),
     );
   }
 
@@ -128,14 +126,14 @@ class PlaylistsSheet extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF252525),
         title: const Text(
-          "New Playlist",
+          'New Playlist',
           style: TextStyle(color: Colors.white),
         ),
         content: TextField(
           controller: controller,
           style: const TextStyle(color: Colors.white),
           decoration: const InputDecoration(
-            hintText: "Playlist Name",
+            hintText: 'Playlist Name',
             hintStyle: TextStyle(color: Colors.grey),
           ),
           autofocus: true,
@@ -143,7 +141,7 @@ class PlaylistsSheet extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel"),
+            child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () {
@@ -155,7 +153,7 @@ class PlaylistsSheet extends ConsumerWidget {
               }
             },
             child: const Text(
-              "Create",
+              'Create',
               style: TextStyle(color: Color(0xFFFF5252)),
             ),
           ),
