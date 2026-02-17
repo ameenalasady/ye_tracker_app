@@ -42,7 +42,11 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
         ref.invalidate(tabsProvider);
       }
       ref.invalidate(cacheSizeProvider);
+
       if (mounted) {
+        // FIX: Close the sheet first so the SnackBar is visible on the MainScreen
+        Navigator.pop(context);
+
         _showToast(
           context,
           'Library refreshed successfully',
@@ -52,6 +56,9 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
       }
     } catch (e) {
       if (mounted) {
+        // Even on error, close sheet to show the error message clearly
+        Navigator.pop(context);
+
         _showToast(
           context,
           'Refresh failed: $e',
@@ -60,6 +67,8 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
         );
       }
     } finally {
+      // We don't need setState here because we popped the context,
+      // but good practice if we decided to keep it open.
       if (mounted) setState(() => _isRefreshing = false);
     }
   }
@@ -71,12 +80,14 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
       final release = await updateManager.checkForUpdates();
 
       if (mounted) {
+        // FIX: Close the sheet first so Dialogs/Toasts appear on the MainScreen context
+        Navigator.pop(context);
+
         if (release != null) {
-          // Close sheet so the dialog is on top of the main screen
-          Navigator.pop(context);
           showDialog(
             context: context,
             barrierDismissible: false,
+            useRootNavigator: true, // Forces dialog on top of everything
             builder: (ctx) => UpdateAvailableDialog(release: release),
           );
         } else {
@@ -90,6 +101,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
       }
     } catch (e) {
       if (mounted) {
+        Navigator.pop(context); // Close sheet to show error
         _showToast(
           context,
           'Update check failed: $e',
@@ -108,6 +120,9 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
     IconData? icon,
     Color? iconColor,
   }) {
+    // ScaffoldMessenger finds the nearest Scaffold (MainScreen).
+    // If SettingsSheet is open, this renders BEHIND it.
+    // That's why we pop() before calling this.
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -339,8 +354,10 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                     color: Colors.white54,
                   ),
                   onTap: () async {
+                    // FIX: Use useRootNavigator: true to show dialog ABOVE the sheet
                     final confirm = await showDialog<bool>(
                       context: context,
+                      useRootNavigator: true,
                       builder: (c) => AlertDialog(
                         backgroundColor: const Color(0xFF252525),
                         title: const Text(
@@ -368,9 +385,14 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                     );
 
                     if (confirm == true) {
+                      // FIX: Close the sheet first
+                      if (context.mounted) Navigator.pop(context);
+
                       await CacheManager.clearAllCache();
                       ref.invalidate(cacheSizeProvider);
                       ref.invalidate(tracksProvider);
+
+                      // Show Toast on MainScreen
                       if (context.mounted) {
                         _showToast(
                           context,
