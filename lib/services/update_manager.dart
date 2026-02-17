@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:open_file/open_file.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class UpdateRelease {
   // GitHub release page
@@ -78,6 +81,26 @@ class UpdateManager {
     required Function(double) onProgress,
     required Function(String) onError,
   }) async {
+    // --- CHECK INSTALL PERMISSIONS (Android) ---
+    if (Platform.isAndroid) {
+      // Check if the app is allowed to install packages
+      var status = await Permission.requestInstallPackages.status;
+
+      if (!status.isGranted) {
+        // This will open the system settings for "Install unknown apps"
+        status = await Permission.requestInstallPackages.request();
+
+        // Check status again after the user returns from settings
+        if (!status.isGranted) {
+          // Double check in case the object wasn't refreshed immediately
+          if (!await Permission.requestInstallPackages.isGranted) {
+            onError('Install permission is required to update.');
+            return;
+          }
+        }
+      }
+    }
+
     try {
       final dir = await getApplicationDocumentsDirectory();
       final savePath = '${dir.path}/update_${release.tagName}.apk';
