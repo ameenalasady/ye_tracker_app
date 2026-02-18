@@ -91,10 +91,15 @@ class TracksRepository {
   }
 
   /// Explicitly clears the local cache for a specific tab.
-  /// Used for "Pull to Refresh".
   Future<void> clearLocalCache(SheetTab tab) async {
     final box = await _openBoxForTab(tab);
     await box.clear();
+  }
+
+  Future<void> clearAllCaches(List<SheetTab> tabs) async {
+    for (final tab in tabs) {
+      await clearLocalCache(tab);
+    }
   }
 
   /// Helper to manage box lifecycle

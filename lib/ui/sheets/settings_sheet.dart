@@ -31,7 +31,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
     super.dispose();
   }
 
-  // --- NEW: Custom Overlay Toast to show on top of ModalSheet ---
+  // --- CUSTOM OVERLAY TOAST ---
   void _showOverlayToast(
     BuildContext context,
     String message, {
@@ -64,23 +64,31 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
 
   Future<void> _refreshLibrary() async {
     setState(() => _isRefreshing = true);
+    // Minimal delay for visual feedback
     await Future.delayed(const Duration(milliseconds: 500));
-    final selectedTab = ref.read(selectedTabProvider);
 
     try {
-      if (selectedTab != null) {
-        await ref.read(tracksRepositoryProvider).clearLocalCache(selectedTab);
-        ref.invalidate(tracksProvider);
-      } else {
-        ref.invalidate(tabsProvider);
-      }
+      final repo = ref.read(tracksRepositoryProvider);
+
+      // 1. Force fetch latest Tabs (Eras) from Network
+      // This ensures we have the latest list of eras before clearing their data
+      final tabs = await repo.fetchTabs();
+
+      // 2. Clear local cache for ALL tabs found
+      await repo.clearAllCaches(tabs);
+
+      // 3. Invalidate Providers to refresh UI
+      // invalidating tabsProvider re-reads the cache (which fetchTabs just updated)
+      ref.invalidate(tabsProvider);
+      // invalidating tracksProvider forces the current screen to reload data
+      ref.invalidate(tracksProvider);
+      // Update cache size calculation
       ref.invalidate(cacheSizeProvider);
 
       if (mounted) {
-        // Changed: Use Overlay Toast instead of SnackBar + Pop
         _showOverlayToast(
           context,
-          'Library refreshed successfully',
+          'Full library refreshed successfully',
           icon: Icons.check_circle_rounded,
           iconColor: Colors.greenAccent,
         );
@@ -203,7 +211,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                     style: TextStyle(color: Colors.white),
                   ),
                   subtitle: const Text(
-                    'Pull latest changes from tracker',
+                    'Pull latest changes for all tabs',
                     style: TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                   trailing: _isRefreshing
