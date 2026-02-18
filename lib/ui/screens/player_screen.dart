@@ -625,6 +625,7 @@ class _QueueSheetState extends ConsumerState<QueueSheet> {
                           height: 72,
                           child: ListTile(
                             key: ValueKey('${item.id}_$globalIndex'),
+                            // --- CHANGED: Image Logic here ---
                             leading: Container(
                               width: 40,
                               height: 40,
@@ -636,15 +637,56 @@ class _QueueSheetState extends ConsumerState<QueueSheet> {
                                     : const Color(0xFF2A2A2A),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: isPlaying
-                                  ? const Icon(
-                                      Icons.graphic_eq,
-                                      color: Color(0xFFFF5252),
-                                    )
-                                  : const Icon(
-                                      Icons.music_note,
-                                      color: Colors.white24,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  // 1. Image Layer
+                                  if (item.artUri != null)
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: CachedNetworkImage(
+                                        imageUrl: item.artUri.toString(),
+                                        httpHeaders: Track.imageHeaders,
+                                        fit: BoxFit.cover,
+                                        width: 40,
+                                        height: 40,
+                                        errorWidget:
+                                            (_, __, ___) => const SizedBox(),
+                                      ),
                                     ),
+
+                                  // 2. Icon Overlay Layer
+                                  // Show if Playing OR if No Image is available
+                                  if (isPlaying || item.artUri == null)
+                                    Container(
+                                      width: 40,
+                                      height: 40,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        // Dim the image if we are playing so the red icon pops
+                                        color: (isPlaying &&
+                                                item.artUri != null)
+                                            ? Colors.black.withValues(
+                                                alpha: 0.6,
+                                              )
+                                            : null,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: isPlaying
+                                          ? const Icon(
+                                              Icons.graphic_eq,
+                                              color: Color(0xFFFF5252),
+                                              size: 20,
+                                            )
+                                          : (item.artUri == null
+                                              ? const Icon(
+                                                  Icons.music_note,
+                                                  color: Colors.white24,
+                                                )
+                                              : null),
+                                    ),
+                                ],
+                              ),
                             ),
                             title: Text(
                               item.title,
