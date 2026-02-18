@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/app_providers.dart';
@@ -29,6 +31,37 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
     super.dispose();
   }
 
+  // --- NEW: Custom Overlay Toast to show on top of ModalSheet ---
+  void _showOverlayToast(
+    BuildContext context,
+    String message, {
+    IconData? icon,
+    Color? iconColor,
+    bool isError = false,
+  }) {
+    final overlay = Overlay.of(context);
+    late OverlayEntry overlayEntry;
+
+    overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        bottom: 50,
+        left: 24,
+        right: 24,
+        child: _ToastWidget(
+          message: message,
+          icon: icon,
+          iconColor: iconColor,
+          isError: isError,
+          onDismiss: () {
+            overlayEntry.remove();
+          },
+        ),
+      ),
+    );
+
+    overlay.insert(overlayEntry);
+  }
+
   Future<void> _refreshLibrary() async {
     setState(() => _isRefreshing = true);
     await Future.delayed(const Duration(milliseconds: 500));
@@ -44,10 +77,8 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
       ref.invalidate(cacheSizeProvider);
 
       if (mounted) {
-        // FIX: Close the sheet first so the SnackBar is visible on the MainScreen
-        Navigator.pop(context);
-
-        _showToast(
+        // Changed: Use Overlay Toast instead of SnackBar + Pop
+        _showOverlayToast(
           context,
           'Library refreshed successfully',
           icon: Icons.check_circle_rounded,
@@ -56,19 +87,15 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
       }
     } catch (e) {
       if (mounted) {
-        // Even on error, close sheet to show the error message clearly
-        Navigator.pop(context);
-
-        _showToast(
+        _showOverlayToast(
           context,
           'Refresh failed: $e',
           icon: Icons.error_outline_rounded,
           iconColor: const Color(0xFFFF5252),
+          isError: true,
         );
       }
     } finally {
-      // We don't need setState here because we popped the context,
-      // but good practice if we decided to keep it open.
       if (mounted) setState(() => _isRefreshing = false);
     }
   }
@@ -80,18 +107,16 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
       final release = await updateManager.checkForUpdates();
 
       if (mounted) {
-        // FIX: Close the sheet first so Dialogs/Toasts appear on the MainScreen context
-        Navigator.pop(context);
-
         if (release != null) {
+          // Dialogs naturally show over bottom sheets, so this works fine
           showDialog(
             context: context,
             barrierDismissible: false,
-            useRootNavigator: true, // Forces dialog on top of everything
+            useRootNavigator: true,
             builder: (ctx) => UpdateAvailableDialog(release: release),
           );
         } else {
-          _showToast(
+          _showOverlayToast(
             context,
             'You are on the latest version.',
             icon: Icons.verified_rounded,
@@ -101,46 +126,17 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
       }
     } catch (e) {
       if (mounted) {
-        Navigator.pop(context); // Close sheet to show error
-        _showToast(
+        _showOverlayToast(
           context,
           'Update check failed: $e',
           icon: Icons.wifi_off_rounded,
           iconColor: const Color(0xFFFF5252),
+          isError: true,
         );
       }
     } finally {
       if (mounted) setState(() => _isCheckingUpdate = false);
     }
-  }
-
-  void _showToast(
-    BuildContext context,
-    String message, {
-    IconData? icon,
-    Color? iconColor,
-  }) {
-    // ScaffoldMessenger finds the nearest Scaffold (MainScreen).
-    // If SettingsSheet is open, this renders BEHIND it.
-    // That's why we pop() before calling this.
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            if (icon != null) ...[
-              Icon(icon, color: iconColor ?? Colors.white, size: 20),
-              const SizedBox(width: 12),
-            ],
-            Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   @override
@@ -354,7 +350,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                     color: Colors.white54,
                   ),
                   onTap: () async {
-                    // FIX: Use useRootNavigator: true to show dialog ABOVE the sheet
+                    // Show confirmation dialog ABOVE the sheet
                     final confirm = await showDialog<bool>(
                       context: context,
                       useRootNavigator: true,
@@ -385,16 +381,13 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                     );
 
                     if (confirm == true) {
-                      // FIX: Close the sheet first
-                      if (context.mounted) Navigator.pop(context);
-
+                      // Do NOT close the sheet. Just perform action and toast.
                       await CacheManager.clearAllCache();
                       ref.invalidate(cacheSizeProvider);
                       ref.invalidate(tracksProvider);
 
-                      // Show Toast on MainScreen
                       if (context.mounted) {
-                        _showToast(
+                        _showOverlayToast(
                           context,
                           'Cache cleared',
                           icon: Icons.delete_sweep_rounded,
@@ -443,7 +436,13 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                     ref.read(sourceUrlProvider.notifier).state =
                         _sourceController.text;
                     ref.invalidate(tabsProvider);
-                    Navigator.pop(context);
+                    // Close keyboard if open
+                    FocusScope.of(context).unfocus();
+                    _showOverlayToast(
+                      context,
+                      'Source updated',
+                      icon: Icons.save_rounded,
+                    );
                   },
                   child: const Text(
                     'Save',
@@ -526,4 +525,113 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
       ),
     );
   }
+}
+
+// Internal Widget to handle Toast Animation
+class _ToastWidget extends StatefulWidget {
+  const _ToastWidget({
+    required this.message,
+    required this.onDismiss,
+    this.icon,
+    this.iconColor,
+    this.isError = false,
+  });
+
+  final String message;
+  final VoidCallback onDismiss;
+  final IconData? icon;
+  final Color? iconColor;
+  final bool isError;
+
+  @override
+  State<_ToastWidget> createState() => _ToastWidgetState();
+}
+
+class _ToastWidgetState extends State<_ToastWidget>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _opacity;
+  late Animation<Offset> _offset;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+
+    _opacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+
+    _offset = Tween<Offset>(
+      begin: const Offset(0, 0.5),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
+
+    _controller.forward();
+
+    // Auto dismiss after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () async {
+      if (mounted) {
+        await _controller.reverse();
+        widget.onDismiss();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) => FadeTransition(
+          opacity: _opacity,
+          child: SlideTransition(position: _offset, child: child),
+        ),
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2A2A2A),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white10),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              if (widget.icon != null) ...[
+                Icon(
+                  widget.icon,
+                  color: widget.iconColor ?? Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: Text(
+                  widget.message,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
 }
