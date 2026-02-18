@@ -197,11 +197,11 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
             ),
           ),
           const SizedBox(height: 10),
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF2A2A2A),
-              borderRadius: BorderRadius.circular(16),
-            ),
+          // CHANGED: Used Material with clipBehavior instead of Container
+          Material(
+            color: const Color(0xFF2A2A2A),
+            borderRadius: BorderRadius.circular(16),
+            clipBehavior: Clip.antiAlias,
             child: Column(
               children: [
                 ListTile(
@@ -420,44 +420,46 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
             ),
           ),
           const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF2A2A2A),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _sourceController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      labelText: 'Tracker Domain',
-                      labelStyle: TextStyle(color: Colors.grey),
+          // CHANGED: Used Material with clipBehavior
+          Material(
+            color: const Color(0xFF2A2A2A),
+            borderRadius: BorderRadius.circular(16),
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _sourceController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        labelText: 'Tracker Domain',
+                        labelStyle: TextStyle(color: Colors.grey),
+                      ),
                     ),
                   ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    ref.read(sourceUrlProvider.notifier).state =
-                        _sourceController.text;
-                    ref.invalidate(tabsProvider);
-                    // Close keyboard if open
-                    FocusScope.of(context).unfocus();
-                    _showOverlayToast(
-                      context,
-                      'Source updated',
-                      icon: Icons.save_rounded,
-                    );
-                  },
-                  child: const Text(
-                    'Save',
-                    style: TextStyle(color: Color(0xFFFF5252)),
+                  TextButton(
+                    onPressed: () {
+                      ref.read(sourceUrlProvider.notifier).state =
+                          _sourceController.text;
+                      ref.invalidate(tabsProvider);
+                      // Close keyboard if open
+                      FocusScope.of(context).unfocus();
+                      _showOverlayToast(
+                        context,
+                        'Source updated',
+                        icon: Icons.save_rounded,
+                      );
+                    },
+                    child: const Text(
+                      'Save',
+                      style: TextStyle(color: Color(0xFFFF5252)),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
 
@@ -473,11 +475,11 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
             ),
           ),
           const SizedBox(height: 10),
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF2A2A2A),
-              borderRadius: BorderRadius.circular(16),
-            ),
+          // CHANGED: Used Material with clipBehavior
+          Material(
+            color: const Color(0xFF2A2A2A),
+            borderRadius: BorderRadius.circular(16),
+            clipBehavior: Clip.antiAlias,
             child: Column(
               children: [
                 ListTile(
