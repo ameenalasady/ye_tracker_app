@@ -24,7 +24,6 @@ class _TrackTileState extends ConsumerState<TrackTile>
   @override
   void initState() {
     super.initState();
-    // FIX: Do not call repeat() here. Just initialize.
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
@@ -151,7 +150,6 @@ class _TrackTileState extends ConsumerState<TrackTile>
     );
   }
 
-  // Helper to check basic connectivity
   Future<bool> _hasInternet() async {
     try {
       final result = await InternetAddress.lookup('google.com');
@@ -163,7 +161,6 @@ class _TrackTileState extends ConsumerState<TrackTile>
 
   @override
   Widget build(BuildContext context) {
-    // 1. Listen to the Track object itself (standard Hive update)
     if (widget.track.isInBox) {
       return ValueListenableBuilder(
         valueListenable: (widget.track.box! as Box).listenable(
@@ -176,7 +173,6 @@ class _TrackTileState extends ConsumerState<TrackTile>
     }
   }
 
-  // 2. NEW: Listen to the Global Downloads Registry for this specific URL
   Widget _buildWithGlobalListener(BuildContext context) {
     final downloadsBox = Hive.box('downloads');
     return ValueListenableBuilder(
@@ -184,7 +180,6 @@ class _TrackTileState extends ConsumerState<TrackTile>
         keys: [widget.track.effectiveUrl],
       ),
       builder: (context, Box box, _) {
-        // Check if global registry has a path
         final globalPath = box.get(widget.track.effectiveUrl);
         return _buildTileContent(context, globalPath);
       },
@@ -195,7 +190,6 @@ class _TrackTileState extends ConsumerState<TrackTile>
     final t = widget.track;
     final hasLink = t.link.isNotEmpty && t.link != 'Link Needed';
 
-    // Check both local object state AND global registry state
     final isDownloaded =
         (t.localPath.isNotEmpty && File(t.localPath).existsSync()) ||
         (globalPath != null && File(globalPath).existsSync());
@@ -214,7 +208,6 @@ class _TrackTileState extends ConsumerState<TrackTile>
       if (currentTrackObj != null) {
         isCurrentTrack = currentTrackObj == t;
       } else {
-        // Fallback ID check (handles both URL and Local Path IDs)
         isCurrentTrack =
             mediaItem.id == t.effectiveUrl ||
             (isDownloaded && mediaItem.id == (globalPath ?? t.localPath));
@@ -234,29 +227,25 @@ class _TrackTileState extends ConsumerState<TrackTile>
         (processingState == AudioProcessingState.buffering ||
             processingState == AudioProcessingState.loading);
 
-    // --- FIX: Control animation based on state ---
     if (isPlaying && !_animController.isAnimating) {
       _animController.repeat();
     } else if (!isPlaying && _animController.isAnimating) {
       _animController.stop();
-      _animController.reset(); // Reset so bars go back to flat
+      _animController.reset();
     }
-    // ---------------------------------------------
 
     const cardColor = Color(0xFF252525);
     const activeBorderColor = Color(0xFFFF5252);
 
-    // Use effectiveAlbumArt
+    // This getter checks the global hive box if the local url is empty
     final artUrl = t.effectiveAlbumArt;
 
     return GestureDetector(
       onLongPress: () => _showAddToPlaylistSheet(context, t),
       onTap: () async {
         if (isDownloaded) {
-          // Pass the global path if local is missing
           if (t.localPath.isEmpty && globalPath != null) {
-            t.localPath =
-                globalPath; // Update instance temporarily for playback
+            t.localPath = globalPath;
           }
           _playTrack(t, isCurrentTrack, isPlaying);
         } else if (hasLink) {
@@ -324,8 +313,11 @@ class _TrackTileState extends ConsumerState<TrackTile>
                           borderRadius: BorderRadius.circular(12),
                           child: CachedNetworkImage(
                             imageUrl: artUrl,
+                            // Ensure headers are passed for authentication/hotlink protection
                             httpHeaders: Track.imageHeaders,
                             fit: BoxFit.cover,
+                            memCacheHeight: 150, // Memory optimization
+                            fadeInDuration: const Duration(milliseconds: 200),
                             placeholder: (context, url) => Center(
                               child: _buildLeadingIcon(
                                 isCurrentTrack,

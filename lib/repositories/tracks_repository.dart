@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart'; // Import Cache Manager
 import 'package:hive/hive.dart';
 import '../models/sheet_tab.dart';
 import '../models/track.dart';
@@ -6,7 +7,7 @@ import '../services/tracker_parser.dart';
 
 class TracksRepository {
   TracksRepository({required String sourceUrl})
-    : _parser = TrackerParser(sourceUrl);
+      : _parser = TrackerParser(sourceUrl);
   final TrackerParser _parser;
 
   /// Fetches the list of tabs (Eras).
@@ -28,7 +29,6 @@ class TracksRepository {
       if (box.isNotEmpty) {
         return box.values.toList();
       }
-      // 4. If no cache and no network, rethrow
       rethrow;
     }
   }
@@ -38,28 +38,39 @@ class TracksRepository {
   Future<List<Track>> getTracksForTab(SheetTab tab) async {
     final box = await _openBoxForTab(tab);
 
-    // FIX: If we have data, return it immediately (Cache First).
+    // Cache First: If we have data, return it immediately to be snappy.
     if (box.isNotEmpty) {
+      // Trigger a background refresh of images even on cache hit
+      _backgroundPrefetchImages(box.values.toList());
       return box.values.toList();
     }
 
     try {
-      // Fetch from network if cache is empty
+      // Fetch from network
       final tracks = await _parser.fetchTracksForTab(tab.gid);
 
       final downloadsBox = Hive.box('downloads');
-      final eraImagesBox = Hive.box('era_images'); // Access global era images
+      final eraImagesBox = Hive.box('era_images');
 
-      // --- NEW: Harvest & Apply Era Images ---
-      // 1. Harvest: If a track has an image, save it to the global era_images box
+      // --- NEW: Harvest & Prefetch Strategy ---
+      // 1. Harvest all Era->Image mappings found in this tab
+      final Map<String, String> foundEraImages = {};
+      final Set<String> urlsToPrefetch = {};
+
       for (final track in tracks) {
         if (track.albumArtUrl.isNotEmpty) {
-          eraImagesBox.put(track.era, track.albumArtUrl);
+          foundEraImages[track.era] = track.albumArtUrl;
+          urlsToPrefetch.add(track.albumArtUrl);
         }
       }
 
+      // 2. Save mappings to Hive immediately
+      if (foundEraImages.isNotEmpty) {
+        await eraImagesBox.putAll(foundEraImages);
+      }
+
+      // 3. Restore Download State (Local Paths)
       for (final track in tracks) {
-        // --- Restore Download State ---
         final savedPath = downloadsBox.get(track.effectiveUrl);
         if (savedPath != null && savedPath is String) {
           if (File(savedPath).existsSync()) {
@@ -68,25 +79,48 @@ class TracksRepository {
             downloadsBox.delete(track.effectiveUrl);
           }
         }
-
-        // --- Apply Global Era Image if missing ---
-        // (Note: track.effectiveAlbumArt handles this dynamically, but saving it here
-        // helps if we export the data later, though strictly not necessary with the getter)
-        if (track.albumArtUrl.isEmpty) {
-          // We don't overwrite the field because it's final,
-          // but the UI will use the getter 'effectiveAlbumArt' which checks the box.
-        }
       }
 
-      // Save to local cache
+      // 4. Save tracks to local cache
       await box.clear();
       await box.addAll(tracks);
 
+      // 5. Fire-and-forget: Warm up the image cache
+      // We don't await this so the UI renders immediately
+      _prefetchImageBinaries(urlsToPrefetch);
+
       return tracks;
     } catch (e) {
-      // If network fails but we have (somehow) data, return it.
       if (box.isNotEmpty) return box.values.toList();
       rethrow;
+    }
+  }
+
+  /// Extracts images from an existing list and tries to cache them.
+  void _backgroundPrefetchImages(List<Track> tracks) {
+    final Set<String> urls = {};
+    for (final t in tracks) {
+      if (t.effectiveAlbumArt.isNotEmpty) {
+        urls.add(t.effectiveAlbumArt);
+      }
+    }
+    _prefetchImageBinaries(urls);
+  }
+
+  /// Uses FlutterCacheManager to download images to disk in the background.
+  /// This ensures that when the user scrolls, the file is already on the FS.
+  Future<void> _prefetchImageBinaries(Set<String> urls) async {
+    final cacheManager = DefaultCacheManager();
+    for (final url in urls) {
+      try {
+        // We use downloadFile which checks cache first, then downloads if needed.
+        // We don't do anything with the file info, just ensure it exists.
+        cacheManager.getSingleFile(url, headers: Track.imageHeaders).then((_) {
+          // Success, image is cached.
+        }).catchError((_) {
+          // Silent failure is fine for prefetching
+        });
+      } catch (_) {}
     }
   }
 
@@ -102,7 +136,6 @@ class TracksRepository {
     }
   }
 
-  /// Helper to manage box lifecycle
   Future<Box<Track>> _openBoxForTab(SheetTab tab) async {
     final boxName = 'tracks_${tab.gid}';
     if (Hive.isBoxOpen(boxName)) {
@@ -111,7 +144,6 @@ class TracksRepository {
       try {
         return await Hive.openBox<Track>(boxName);
       } catch (e) {
-        // Handle corrupted box by deleting and recreating
         await Hive.deleteBoxFromDisk(boxName);
         return Hive.openBox<Track>(boxName);
       }

@@ -20,7 +20,6 @@ class TrackerParser {
   }
 
   Future<List<SheetTab>> fetchTabs() async {
-    // PASS HEADERS HERE
     final response = await http
         .get(Uri.parse(_baseUrl), headers: Track.imageHeaders)
         .timeout(const Duration(seconds: 15));
@@ -30,14 +29,12 @@ class TrackerParser {
     }
 
     final tabList = <SheetTab>[];
-    // Regex is faster than parsing full HTML for just these strings
     final tabReg = RegExp(r'name: "(.*?)",.*?gid: "(\d+)"');
     final matches = tabReg.allMatches(response.body);
 
     for (final m in matches) {
       final name = m.group(1)!;
       final gid = m.group(2)!;
-      // Filter out utility tabs
       if (!const [
         'Key',
         'Template',
@@ -61,7 +58,6 @@ class TrackerParser {
     final url = '$_baseUrl/htmlview/sheet?headers=true&gid=$gid';
     debugPrint('Fetching: $url');
 
-    // PASS HEADERS HERE
     final response = await http
         .get(Uri.parse(url), headers: Track.imageHeaders)
         .timeout(const Duration(seconds: 20));
@@ -124,9 +120,7 @@ List<Track> _parseHtml(String htmlBody) {
     }
   }
 
-  if (!colMap.containsKey('name')) {
-    return [];
-  }
+  if (!colMap.containsKey('name')) return [];
 
   final tracks = <Track>[];
   var lastEra = '';
@@ -146,31 +140,28 @@ List<Track> _parseHtml(String htmlBody) {
   for (var i = startRowIndex; i < rows.length; i++) {
     final cells = rows[i].children;
 
-    // --- Image Detection (Era Headers) ---
+    // --- Image Detection ---
+    // More robust check: look for any img tag within the row
     final imgs = rows[i].querySelectorAll('img');
     if (imgs.isNotEmpty) {
       for (final img in imgs) {
         final src = img.attributes['src'];
-        if (src != null && src.isNotEmpty) {
+        if (src != null && src.startsWith('http')) {
           lastEraImage = src;
+          // Break on first valid image to avoid grabbling small icons if any
+          break;
         }
       }
     }
 
-    if (cells.length <= idxName) {
-      continue;
-    }
+    if (cells.length <= idxName) continue;
 
     final rawName = cells[idxName].text.trim();
-    if (rawName.isEmpty || rawName == 'Name') {
-      continue;
-    }
+    if (rawName.isEmpty || rawName == 'Name') continue;
 
     final len = (idxLength > -1 && idxLength < cells.length)
         ? cells[idxLength].text.trim()
         : '';
-
-    // CHANGED: Strictly skip if there is no duration/length
     if (len.isEmpty) continue;
 
     var lnk = '';
@@ -189,6 +180,7 @@ List<Track> _parseHtml(String htmlBody) {
       era = cells[idxEra].text.trim();
     }
 
+    // Logic: If Era cell is empty, it belongs to the previous Era (merged cells logic)
     if (era.isNotEmpty) {
       lastEra = era;
     } else {
@@ -213,7 +205,6 @@ List<Track> _parseHtml(String htmlBody) {
       }
     }
 
-    // Clean Google Redirection Links
     if (lnk.isNotEmpty && lnk.contains('google.com/url')) {
       final match = regExpGoogle.firstMatch(lnk);
       if (match != null) {
@@ -245,6 +236,8 @@ List<Track> _parseHtml(String htmlBody) {
             : '',
         isStreaming: streaming,
         link: lnk,
+        // We assign what we found so far.
+        // The Repository will back-fill gaps using the Era map.
         albumArtUrl: lastEraImage,
       ),
     );
