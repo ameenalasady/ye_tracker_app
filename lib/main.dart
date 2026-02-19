@@ -15,6 +15,11 @@ import 'ui/screens/main_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
   // Make status bar transparent for immersive feel
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
