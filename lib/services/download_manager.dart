@@ -101,7 +101,6 @@ class DownloadManager extends ChangeNotifier {
       return;
     }
 
-    // --- FIX START ---
     // 4. Create Task and Add to List IMMEDIATELY (Synchronous Lock)
     // We add it now so that subsequent calls to isDownloading() return true immediately.
     final task = DownloadTask(track: track);
@@ -129,13 +128,12 @@ class DownloadManager extends ChangeNotifier {
         return;
       }
     }
-    // --- FIX END ---
 
     // 7. Process Queue
     _processQueue();
   }
 
-  void _processQueue() async {
+  void _processQueue() {
     // Get setting for concurrency
     final settingsBox = Hive.box('settings');
     final int maxConcurrent = settingsBox.get(
@@ -152,27 +150,30 @@ class DownloadManager extends ChangeNotifier {
         )
         .length;
 
+    // If we are at capacity, do nothing.
     if (runningCount >= maxConcurrent) return;
 
-    // Find next queued item
-    try {
-      final nextTask = _tasks.firstWhere(
-        (t) => t.status == DownloadStatus.queued,
-      );
-      _startDownload(nextTask);
+    // Calculate how many slots are free
+    final slotsAvailable = maxConcurrent - runningCount;
+    if (slotsAvailable <= 0) return;
 
-      // If we still have room, recurse lightly to fill slots
-      if (runningCount + 1 < maxConcurrent) {
-        _processQueue();
-      }
-    } catch (e) {
-      // No queued items found, we are done.
+    // Find the next N queued tasks
+    final tasksToStart = _tasks
+        .where((t) => t.status == DownloadStatus.queued)
+        .take(slotsAvailable)
+        .toList();
+
+    // Start them iteratively. We do NOT await here.
+    // This allows _processQueue to exit immediately, unwinding the stack.
+    for (final task in tasksToStart) {
+      _startDownload(task);
     }
   }
 
   Future<void> _startDownload(DownloadTask task) async {
     task.status = DownloadStatus.connecting;
     task.statusMessage = 'Connecting...';
+    // Notify to update UI (spinner/status)
     notifyListeners();
 
     try {
@@ -195,6 +196,9 @@ class DownloadManager extends ChangeNotifier {
             // Indeterminate
             task.statusMessage = 'Downloading...';
           }
+          // We call notifyListeners inside the progress callback
+          // Note: In high-frequency updates, you might want to throttle this,
+          // but for now, it ensures the UI bar moves smoothly.
           notifyListeners();
         },
       );
@@ -219,7 +223,11 @@ class DownloadManager extends ChangeNotifier {
       debugPrint('Download Error: $e');
     } finally {
       notifyListeners();
-      _processQueue();
+
+      // Trigger the queue again to pick up the next item.
+      // Using Future.microtask ensures this runs on the next event loop tick,
+      // preventing stack depth accumulation (Stack Overflow fix).
+      Future.microtask(() => _processQueue());
 
       // Cleanup completed tasks after 2 seconds to keep list clean
       if (task.status == DownloadStatus.completed) {
