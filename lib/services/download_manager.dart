@@ -176,6 +176,9 @@ class DownloadManager extends ChangeNotifier {
     // Notify to update UI (spinner/status)
     notifyListeners();
 
+    // Throttle tracker variable
+    DateTime? lastUpdate;
+
     try {
       final dir = await getApplicationDocumentsDirectory();
       final safeName = task.track.displayName
@@ -196,10 +199,17 @@ class DownloadManager extends ChangeNotifier {
             // Indeterminate
             task.statusMessage = 'Downloading...';
           }
-          // We call notifyListeners inside the progress callback
-          // Note: In high-frequency updates, you might want to throttle this,
-          // but for now, it ensures the UI bar moves smoothly.
-          notifyListeners();
+
+          // --- THROTTLE LOGIC START ---
+          // Throttle UI updates to roughly 10 frames per second (100ms)
+          // preventing the UI thread from choking on high-speed downloads.
+          final now = DateTime.now();
+          if (lastUpdate == null ||
+              now.difference(lastUpdate!).inMilliseconds > 100) {
+            lastUpdate = now;
+            notifyListeners();
+          }
+          // --- THROTTLE LOGIC END ---
         },
       );
 
@@ -222,6 +232,7 @@ class DownloadManager extends ChangeNotifier {
       task.statusMessage = 'Failed';
       debugPrint('Download Error: $e');
     } finally {
+      // Ensure the final status update is sent regardless of throttling
       notifyListeners();
 
       // Trigger the queue again to pick up the next item.
