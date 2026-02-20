@@ -117,14 +117,24 @@ class PreloadCountNotifier extends StateNotifier<int> {
 }
 
 final cacheSizeProvider = FutureProvider<String>((ref) async {
+  // Invalidating this provider (e.g. via pulling to refresh tabs) re-triggers calculation
   ref.watch(tabsProvider);
+
   final dir = await getApplicationDocumentsDirectory();
   try {
-    final files = dir.listSync().where((f) => f.path.endsWith('.mp3'));
-    var totalBytes = 0;
-    for (final f in files) {
-      totalBytes += (f as File).lengthSync();
-    }
+    // 1. List files (synchronous listing is usually fast enough for typical cache sizes,
+    // compared to stating file size). Filter for .mp3 explicitly.
+    final files = dir.listSync()
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.mp3'));
+
+    // 2. Calculate sizes asynchronously in parallel.
+    // This prevents blocking the UI thread with multiple sequential disk reads.
+    final sizes = await Future.wait(files.map((f) => f.length()));
+
+    // 3. Sum up the results
+    final totalBytes = sizes.fold<int>(0, (prev, element) => prev + element);
+
     if (totalBytes < 1024 * 1024) {
       return '${(totalBytes / 1024).toStringAsFixed(1)} KB';
     }
