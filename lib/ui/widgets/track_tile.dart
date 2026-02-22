@@ -197,6 +197,9 @@ class _TrackTileState extends ConsumerState<TrackTile>
     final mediaItemAsync = ref.watch(currentMediaItemProvider);
     final playbackStateAsync = ref.watch(playbackStateProvider);
 
+    // --- CHANGED: Retrieve audioHandler to securely fetch current track ---
+    final audioHandler = ref.read(audioHandlerProvider);
+
     final activeDownloads = ref.watch(activeDownloadsProvider).value ?? {};
     final isDownloading = activeDownloads.contains(t.effectiveUrl);
 
@@ -204,7 +207,7 @@ class _TrackTileState extends ConsumerState<TrackTile>
     var isCurrentTrack = false;
 
     if (mediaItem != null) {
-      final currentTrackObj = mediaItem.extras?['track_obj'] as Track?;
+      final currentTrackObj = audioHandler.getTrackById(mediaItem.id);
       if (currentTrackObj != null) {
         isCurrentTrack = currentTrackObj == t;
       } else {

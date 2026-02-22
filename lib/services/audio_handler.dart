@@ -9,10 +9,9 @@ import 'download_manager.dart'; // Import
 class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   // Constructor accepts DownloadManager
   MyAudioHandler(this.downloadManager) {
-    _loadEmptyPlaylist();
-    _notifyAudioHandlerAboutPlaybackEvents();
-    _listenToPlaybackState();
+    _init();
   }
+
   final _player = AudioPlayer();
   final DownloadManager downloadManager; // Dependency Injection
 
@@ -20,6 +19,72 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final Map<String, Track> _trackCache = {};
 
   ConcatenatingAudioSource? _playlist;
+  DateTime? _lastPosSave;
+
+  // --- NEW: Expose track retrieval for UI components ---
+  Track? getTrackById(String id) => _trackCache[id];
+
+  Future<void> _init() async {
+    await _restorePlaybackState();
+    _notifyAudioHandlerAboutPlaybackEvents();
+    _listenToPlaybackState();
+  }
+
+  // --- NEW: State Restoration Logic ---
+  Future<void> _restorePlaybackState() async {
+    try {
+      final box = Hive.box('settings');
+      final rawQueue = box.get('saved_queue');
+      final savedIndex = box.get('saved_index', defaultValue: 0);
+      final savedPositionMs = box.get('saved_position', defaultValue: 0);
+      final savedShuffle = box.get('saved_shuffle', defaultValue: false);
+      final savedRepeat = box.get('saved_repeat', defaultValue: 0);
+
+      if (rawQueue != null && rawQueue is List && rawQueue.isNotEmpty) {
+        final tracks = rawQueue.cast<Track>().toList();
+        final items = tracks.map(_createMediaItem).toList();
+
+        queue.add(items);
+        if (savedIndex >= 0 && savedIndex < items.length) {
+          mediaItem.add(items[savedIndex]);
+        }
+
+        final audioSources = items.map(_createAudioSource).toList();
+        _playlist = ConcatenatingAudioSource(children: audioSources);
+
+        await _player.setAudioSource(
+          _playlist!,
+          initialIndex: savedIndex,
+          initialPosition: Duration(milliseconds: savedPositionMs),
+        );
+
+        await _player.setShuffleModeEnabled(savedShuffle);
+        final loopMode = LoopMode.values[savedRepeat % LoopMode.values.length];
+        await _player.setLoopMode(loopMode);
+
+        // Update AudioService playback state streams with restored modes
+        playbackState.add(
+          playbackState.value.copyWith(
+            shuffleMode: savedShuffle
+                ? AudioServiceShuffleMode.all
+                : AudioServiceShuffleMode.none,
+            repeatMode: const {
+              LoopMode.off: AudioServiceRepeatMode.none,
+              LoopMode.one: AudioServiceRepeatMode.one,
+              LoopMode.all: AudioServiceRepeatMode.all,
+            }[loopMode]!,
+          ),
+        );
+
+        return; // Successfully restored
+      }
+    } catch (e) {
+      debugPrint('Error restoring playback state: $e');
+    }
+
+    // Fallback if no valid state was found
+    await _loadEmptyPlaylist();
+  }
 
   Future<void> _loadEmptyPlaylist() async {
     try {
@@ -33,6 +98,11 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   void _notifyAudioHandlerAboutPlaybackEvents() {
     _player.playbackEventStream.listen((PlaybackEvent event) {
       final playing = _player.playing;
+
+      // --- NEW: Save exact position when paused or stopped ---
+      if (!playing) {
+        Hive.box('settings').put('saved_position', _player.position.inMilliseconds);
+      }
 
       // Standard controls: Previous, Play/Pause, Next
       final controls = [
@@ -84,15 +154,34 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
         mediaItem.add(item);
 
+        // --- NEW: Save Index ---
+        Hive.box('settings').put('saved_index', index);
+
         // Trigger Preloading/Downloading logic
         _schedulePreload();
       }
     });
 
-    // 2. Shuffle Mode Changes (Recalculate "next" songs)
+    // 2. Shuffle Mode Changes
     _player.shuffleModeEnabledStream.listen((enabled) {
-      // Small delay to ensure just_audio updates effectiveIndices
+      // --- NEW: Save Shuffle Mode ---
+      Hive.box('settings').put('saved_shuffle', enabled);
       Future.delayed(const Duration(milliseconds: 100), _schedulePreload);
+    });
+
+    // --- NEW: Loop Mode Changes ---
+    _player.loopModeStream.listen((mode) {
+      Hive.box('settings').put('saved_repeat', mode.index);
+    });
+
+    // --- NEW: Position tracking for persistence ---
+    _player.positionStream.listen((pos) {
+      final now = DateTime.now();
+      // Throttle Hive writes to every 2 seconds to avoid disk thrashing
+      if (_lastPosSave == null || now.difference(_lastPosSave!).inSeconds >= 2) {
+        Hive.box('settings').put('saved_position', pos.inMilliseconds);
+        _lastPosSave = now;
+      }
     });
 
     // 3. Duration & Queue Updates
@@ -105,15 +194,20 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
     _player.sequenceStateStream.listen((sequenceState) {
       if (sequenceState == null) return;
+
       final sequence = sequenceState.effectiveSequence;
-      final newQueue = sequence
-          .map((source) => source.tag as MediaItem)
-          .toList();
+      final newQueue = sequence.map((source) => source.tag as MediaItem).toList();
       queue.add(newQueue);
 
-      // Trigger preload when the sequence is fully loaded.
-      // We rely on explicit calls in move/remove as well, but this covers
-      // initial loads or external changes.
+      // --- NEW: Save Queue to Hive ---
+      // We save the original sequence so order is preserved if shuffle is later disabled
+      final tracksToSave = sequenceState.sequence.map((s) {
+        final item = s.tag as MediaItem;
+        return _trackCache[item.id];
+      }).whereType<Track>().toList();
+
+      Hive.box('settings').put('saved_queue', tracksToSave);
+
       _schedulePreload();
     });
   }

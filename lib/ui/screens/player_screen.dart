@@ -127,7 +127,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     if (mediaItem == null) return const SizedBox.shrink();
 
-    final currentTrack = mediaItem.extras?['track_obj'] as Track?;
+    // --- CHANGED: Securely fetch currently playing Track directly from Audio Handler
+    final currentTrack = audioHandler.getTrackById(mediaItem.id);
 
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
