@@ -50,18 +50,21 @@ class UpdateManager {
         final htmlUrl = data['html_url'] as String;
         final assets = data['assets'] as List;
 
-        // Find the APK asset
-        final apkAsset = assets.firstWhere(
-          (asset) => (asset['name'] as String).endsWith('.apk'),
+        // Platform-specific asset extension
+        final extension = Platform.isAndroid ? '.apk' : '.zip';
+
+        // Find the correct asset
+        final asset = assets.firstWhere(
+          (asset) => (asset['name'] as String).endsWith(extension),
           orElse: () => null,
         );
 
-        if (apkAsset == null) return null;
+        if (asset == null) return null;
 
         final release = UpdateRelease(
           tagName: tagName,
           body: body,
-          downloadUrl: apkAsset['browser_download_url'],
+          downloadUrl: asset['browser_download_url'],
           htmlUrl: htmlUrl,
         );
 
@@ -103,7 +106,8 @@ class UpdateManager {
 
     try {
       final dir = await getApplicationDocumentsDirectory();
-      final savePath = '${dir.path}/update_${release.tagName}.apk';
+      final extension = Platform.isAndroid ? 'apk' : 'zip';
+      final savePath = '${dir.path}/update_${release.tagName}.$extension';
 
       await _dio.download(
         release.downloadUrl,
@@ -115,10 +119,19 @@ class UpdateManager {
         },
       );
 
-      // Trigger installation
-      final result = await OpenFile.open(savePath);
-      if (result.type != ResultType.done) {
-        onError('Could not open APK: ${result.message}');
+      // Trigger installation / Open folder
+      if (Platform.isAndroid) {
+        final result = await OpenFile.open(savePath);
+        if (result.type != ResultType.done) {
+          onError('Could not open APK: ${result.message}');
+        }
+      } else if (Platform.isWindows) {
+        // On Windows, we just open the folder so the user can extract the new version
+        // A more advanced updater would handle extraction and replacement.
+        final result = await OpenFile.open(dir.path);
+        if (result.type != ResultType.done) {
+          onError('Could not open download folder: ${result.message}');
+        }
       }
     } catch (e) {
       onError('Download failed: $e');

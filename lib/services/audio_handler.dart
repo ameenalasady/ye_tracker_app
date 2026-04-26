@@ -21,6 +21,18 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   ConcatenatingAudioSource? _playlist;
   DateTime? _lastPosSave;
 
+  // Guard against the startup race condition: _init() runs async in the
+  // background without being awaited. If the user taps a track before
+  // _restorePlaybackState() finishes, we must not let the restore overwrite
+  // the user's choice when it eventually completes.
+  bool _userHasInteracted = false;
+
+  // Guard against transient currentIndex=0 emissions from just_audio_windows.
+  // The WinRT MediaPlayer always emits index 0 first when loading a
+  // ConcatenatingAudioSource, before seeking to the real initialIndex.
+  // While this flag is true, the currentIndexStream listener is a no-op.
+  bool _settingSource = false;
+
   // --- NEW: Expose track retrieval for UI components ---
   Track? getTrackById(String id) => _trackCache[id];
 
@@ -52,11 +64,24 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         final audioSources = items.map(_createAudioSource).toList();
         _playlist = ConcatenatingAudioSource(children: audioSources);
 
-        await _player.setAudioSource(
-          _playlist!,
-          initialIndex: savedIndex,
-          initialPosition: Duration(milliseconds: savedPositionMs),
-        );
+        // --- RACE CONDITION GUARD ---
+        // The user may have tapped a track while we were doing the async Hive
+        // reads above. Do NOT overwrite their choice with saved state.
+        if (_userHasInteracted) {
+          debugPrint('AudioHandler: skipping restore — user already interacted');
+          return;
+        }
+
+        _settingSource = true;
+        try {
+          await _player.setAudioSource(
+            _playlist!,
+            initialIndex: savedIndex,
+            initialPosition: Duration(milliseconds: savedPositionMs),
+          );
+        } finally {
+          _settingSource = false;
+        }
 
         await _player.setShuffleModeEnabled(savedShuffle);
         final loopMode = LoopMode.values[savedRepeat % LoopMode.values.length];
@@ -82,8 +107,11 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       debugPrint('Error restoring playback state: $e');
     }
 
-    // Fallback if no valid state was found
-    await _loadEmptyPlaylist();
+    // Fallback if no valid state was found — but only if the user hasn't
+    // already started playing something via playPlaylist().
+    if (!_userHasInteracted) {
+      await _loadEmptyPlaylist();
+    }
   }
 
   Future<void> _loadEmptyPlaylist() async {
@@ -148,6 +176,11 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   void _listenToPlaybackState() {
     // 1. Current Index Changes
     _player.currentIndexStream.listen((index) {
+      // Skip transient index emissions during setAudioSource.
+      // just_audio_windows always emits index=0 first before seeking
+      // to the real initialIndex, causing the UI to snap to the wrong track.
+      if (_settingSource) return;
+
       if (index != null && _playlist != null && index < _playlist!.length) {
         final source = _playlist!.children[index] as UriAudioSource;
         final item = source.tag as MediaItem;
@@ -397,6 +430,10 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   Future<void> playPlaylist(List<Track> tracks, int initialIndex) async {
     if (tracks.isEmpty) return;
+    // Mark that the user has actively chosen to play something.
+    // This prevents _restorePlaybackState() from overwriting this choice
+    // if it hasn't finished running yet (startup race condition).
+    _userHasInteracted = true;
     final items = tracks.map(_createMediaItem).toList();
 
     queue.add(items);
@@ -408,6 +445,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
     _playlist = ConcatenatingAudioSource(children: audioSources);
 
+    _settingSource = true;
     try {
       await _player.setAudioSource(_playlist!, initialIndex: initialIndex);
       // Explicitly schedule preload after source setup
@@ -415,6 +453,8 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       play();
     } catch (e) {
       debugPrint('Error playing playlist: $e');
+    } finally {
+      _settingSource = false;
     }
   }
 

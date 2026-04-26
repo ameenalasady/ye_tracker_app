@@ -155,17 +155,24 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
     final preloadCount = ref.watch(preloadCountProvider);
     final packageInfoAsync = ref.watch(packageInfoProvider);
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        24,
-        24,
-        24,
-        MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return ConstrainedBox(
+      // Never let the sheet grow taller than 85% of the window height.
+      // On Android this is a no-op because the sheet is already constrained
+      // by the system; on desktop it prevents the hard overflow.
+      constraints: BoxConstraints(maxHeight: screenHeight * 0.85),
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          24,
+          24,
+          24,
+          MediaQuery.of(context).viewInsets.bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           Center(
             child: Container(
               width: 40,
@@ -532,6 +539,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
             ),
           ),
         ],
+        ),
       ),
     );
   }
