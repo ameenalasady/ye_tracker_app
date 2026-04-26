@@ -60,18 +60,18 @@ jobs:
       # Build Commands
       - name: Build Android
         if: matrix.target == 'Android'
-        run: flutter build apk --release --build-name="v${{ github.run_number }}" --build-number=${{ github.run_number }}
+        run: flutter build apk --release --build-name="1.0.${{ github.run_number }}" --build-number=${{ github.run_number }}
 
       - name: Build Windows
         if: matrix.target == 'Windows'
-        run: flutter build windows --release --build-name="v${{ github.run_number }}" --build-number=${{ github.run_number }}
+        run: flutter build windows --release --build-name="1.0.${{ github.run_number }}" --build-number=${{ github.run_number }}
 
       # Package Windows (Zip the Release folder)
       - name: Package Windows
         if: matrix.target == 'Windows'
         shell: pwsh
         run: |
-          Compress-Archive -Path build/windows/runner/Release/* -DestinationPath build/ye-tracker-windows.zip
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath build/ye-tracker-windows.zip
 
       # Upload Artifacts (Temporary storage to share between jobs if needed, or just for record)
       - name: Upload Artifact
