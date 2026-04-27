@@ -60,11 +60,11 @@ jobs:
       # Build Commands
       - name: Build Android
         if: matrix.target == 'Android'
-        run: flutter build apk --release --build-name="1.0.${{ github.run_number }}" --build-number=${{ github.run_number }}
+        run: flutter build apk --release --build-name="${{ github.run_number }}.0.0" --build-number=${{ github.run_number }}
 
       - name: Build Windows
         if: matrix.target == 'Windows'
-        run: flutter build windows --release --build-name="1.0.${{ github.run_number }}" --build-number=${{ github.run_number }}
+        run: flutter build windows --release --build-name="${{ github.run_number }}.0.0" --build-number=${{ github.run_number }}
 
       # Package Windows (Zip the Release folder)
       - name: Package Windows
